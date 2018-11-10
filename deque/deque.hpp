@@ -7,8 +7,35 @@
 
 namespace sjtu { 
 
+const size_t block_size = 512;
+
 template<class T>
 class deque {
+	// private members
+
+	// utility class
+
+	// node of the linked list, each represent a block of memory
+	// elements in this block is stored just like a vector (expect for double_space)
+	class node {
+	public:
+		T* data;  // elements stored in the block
+		size_t len;  // number of the elements
+		const size_t size;  // number of the maximum elements that can be stored
+		node *next;  // next node
+		node *prev;  // preb node
+
+		node(node *n=nullptr, node *p=nullptr):
+			next(n), prev(p), len(0), size(block_size) {
+			data = new T[size];
+		}
+	} *front, *rear;
+	// front: the head of the block link (front doesn't store elements)
+	// rear: the tail of the block link (rear does store elements)
+	// front -> node -> ... -> node -> rear
+
+	size_t len;  // to make size() O(1)
+
 public:
 	class const_iterator;
 	class iterator {
@@ -17,6 +44,10 @@ public:
 		 * TODO add data members
 		 *   just add whatever you want.
 		 */
+		T* first;
+		T* last;
+		T* cur;
+		node *block;
 	public:
 		/**
 		 * return a new iterator which pointer n-next elements
@@ -97,8 +128,19 @@ public:
 	/**
 	 * TODO Constructors
 	 */
-	deque() {}
-	deque(const deque &other) {}
+	deque() {
+		rear = new node;
+		front = new node(rear);
+	}
+	deque(const deque &other) {
+		rear = nullptr;
+		for(node *cur = other.front->next; cur != other.rear; cur = cur->next)
+		{
+			rear = new node(rear);
+			std::copy(cur->data, cur->data+cur->size, rear->data);
+			rear->len = cur->len;
+		}
+	}
 	/**
 	 * TODO Deconstructor
 	 */
