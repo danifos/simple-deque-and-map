@@ -25,14 +25,14 @@ class deque {
 		node *next;  // next node
 		node *prev;  // preb node
 
-		node(node *n=nullptr, node *p=nullptr):
+		node(node *p=nullptr, node *n=nullptr):
 			next(n), prev(p), len(0), size(block_size) {
 			data = new T[size];
 		}
 	} *front, *rear;
 	// front: the head of the block link (front doesn't store elements)
-	// rear: the tail of the block link (rear does store elements)
-	// front -> node -> ... -> node -> rear
+	// rear: the tail of the block link (rear doesn't store elements)
+	// nullptr <- front <-> node <-> ... <-> node <-> rear -> nullptr
 
 	size_t len;  // to make size() O(1)
 
@@ -129,14 +129,15 @@ public:
 	 * TODO Constructors
 	 */
 	deque() {
-		rear = new node;
-		front = new node(rear);
+		// front = new node; rear = new node(front); front->next = rear;
+		rear = (front = new node)->next = new node(front);
 	}
 	deque(const deque &other) {
-		rear = nullptr;
+		rear = (front = new node)->next = new node(front);
 		for(node *cur = other.front->next; cur != other.rear; cur = cur->next)
 		{
-			rear = new node(rear);
+			// rear->next = new node(rear); rear = rear->next;
+			rear = rear->next = new node(rear);
 			std::copy(cur->data, cur->data+cur->size, rear->data);
 			rear->len = cur->len;
 		}
@@ -144,29 +145,121 @@ public:
 	/**
 	 * TODO Deconstructor
 	 */
-	~deque() {}
+	~deque() {
+		node *p = front, *q;
+		while(p)
+		{
+			q = p->next;
+			delete[] p->data;
+			delete p;
+			p = q;
+		}
+	}
 	/**
 	 * TODO assignment operator
 	 */
-	deque &operator=(const deque &other) {}
+	deque &operator=(const deque &other) {  // just do what deque*(const deque &other) do
+		rear = (front = new node)->next = new node(front);
+		for(node *cur = other.front->next; cur != other.rear; cur = cur->next)
+		{
+			rear = rear->next = new node(rear);
+			std::copy(cur->data, cur->data+cur->size, rear->data);
+			rear->len = cur->len;
+		}
+	}
 	/**
 	 * access specified element with bounds checking
 	 * throw index_out_of_bound if out of bound.
 	 */
-	T & at(const size_t &pos) {}
-	const T & at(const size_t &pos) const {}
-	T & operator[](const size_t &pos) {}
-	const T & operator[](const size_t &pos) const {}
+	T & at(const size_t &pos) {
+		if(pos >= len)
+			throw index_out_of_bound();
+
+		size_t idx;
+		node *cur;
+
+		if(pos < (len>>1))  // serach from front
+		{
+			idx = 0;
+			for(cur = front->next; idx <= pos; cur = cur->next)
+				idx += cur->len;
+			cur = cur->prev;  // back to the prev one
+			return cur->data[pos - (idx - cur->len)];
+		}
+		else  // search from rear
+		{
+			idx = len;
+			for(cur = rear->prev; idx > pos; cur = cur->prev)
+				idx -= cur->len;
+			cur = cur->next;  // back to the next one
+			return cur->data[pos - idx];
+		}
+	}
+	const T & at(const size_t &pos) const {  // just do what T &at() do
+		if(pos >= len) throw index_out_of_bound();
+		size_t idx;
+		node *cur;
+		if(pos < (len>>1)) {
+			idx = 0;
+			for(cur = front->next; idx <= pos; cur = cur->next) idx += cur->len;
+			cur = cur->prev;
+			return cur->data[pos - (idx - cur->len)];
+		}
+		else {
+			idx = len;
+			for(cur = rear->prev; idx > pos; cur = cur->prev) idx -= cur->len;
+			cur = cur->next;
+			return cur->data[pos - idx];
+		}
+	}
+	T & operator[](const size_t &pos) {  // just do what T &at() do
+		if(pos >= len) throw index_out_of_bound();
+		size_t idx;
+		node *cur;
+		if(pos < (len>>1)) {
+			idx = 0;
+			for(cur = front->next; idx <= pos; cur = cur->next) idx += cur->len;
+			cur = cur->prev;
+			return cur->data[pos - (idx - cur->len)];
+		}
+		else {
+			idx = len;
+			for(cur = rear->prev; idx > pos; cur = cur->prev) idx -= cur->len;
+			cur = cur->next;
+			return cur->data[pos - idx];
+		}
+	}
+	const T & operator[](const size_t &pos) const {  // just do what T &at() do
+		if(pos >= len) throw index_out_of_bound();
+		size_t idx;
+		node *cur;
+		if(pos < (len>>1)) {
+			idx = 0;
+			for(cur = front->next; idx <= pos; cur = cur->next) idx += cur->len;
+			cur = cur->prev;
+			return cur->data[pos - (idx - cur->len)];
+		}
+		else {
+			idx = len;
+			for(cur = rear->prev; idx > pos; cur = cur->prev) idx -= cur->len;
+			cur = cur->next;
+			return cur->data[pos - idx];
+		}
+	}
 	/**
 	 * access the first element
 	 * throw container_is_empty when the container is empty.
 	 */
-	const T & front() const {}
+	const T & front() const {
+		return front->next->data[0];
+	}
 	/**
 	 * access the last element
 	 * throw container_is_empty when the container is empty.
 	 */
-	const T & back() const {}
+	const T & back() const {
+		return rear->prev->data[rear->prev->len-1];
+	}
 	/**
 	 * returns an iterator to the beginning.
 	 */
