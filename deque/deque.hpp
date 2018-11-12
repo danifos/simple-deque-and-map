@@ -56,70 +56,212 @@ public:
 		 */
 		iterator operator+(const int &n) const {
 			//TODO
+			iterator ret;
+			ret.block = block;
+
+			int idx = n+(cur-first);
+			while(idx >= ret.block->len)
+			{
+				idx -= ret.block->len;
+				block = ret.block->next;
+			}
+			ret.first = ret.block->data;
+			ret.last = ret.first+ret.block->len;
+			ret.cur = ret.first+idx;
+
+			return ret;
 		}
 		iterator operator-(const int &n) const {
 			//TODO
+			iterator ret;
+			ret.block = block;
+
+			int idx = n+(cur-first);
+			while(idx > ret.block->len)
+			{
+				idx -= ret.block->len;
+				block = ret.block->prev;
+			}
+			ret.first = ret.block->data;
+			ret.last = ret.first+ret.block->len;
+			ret.cur = ret.last-idx;
+
+			return ret;
 		}
 		// return th distance between two iterator,
 		// if these two iterators points to different vectors, throw invaild_iterator.
 		int operator-(const iterator &rhs) const {
 			//TODO
+			int ret;
+			if(block == rhs.block)  // in the same block
+			{
+				ret = cur-rhs.cur;
+			}
+			else
+			{
+				node *cur;
+				// find rhs to the rear
+				ret = 0;
+				for(cur = block->next; cur != rhs.block && cur != rear; cur = cur->next)
+					ret += cur->len;
+				if(cur == rear)  // not found
+				{
+					// find rhs to the front
+					ret = 0;
+					for(cur = block->rear; cur != rhs.block && cur != front; cur = cur->prev)
+						ret += cur->len;
+					if(cur == front)  // not found
+						throw invalid_iterator();
+					// rhs before this
+					ret += (cur-first+1) + (rhs.last-rhs.cur);
+				}
+				else  // rhs after this
+				{
+					ret += (last-cur) + (rhs.cur-rhs.first+1);
+				}
+			}
+			return ret;
 		}
 		iterator operator+=(const int &n) {
 			//TODO
+			int idx = n+(cur-first);
+			while(idx >= block->len)
+			{
+				idx -= block->len;
+				block = block->next;
+			}
+			first = block->data;
+			last = first+block->len;
+			cur = first+idx;
+
+			return *this;
 		}
 		iterator operator-=(const int &n) {
 			//TODO
+			int idx = n+(last-cur);
+			while(idx > block->len)
+			{
+				idx -= block->len;
+				block = block->prev;
+			}
+			first = block->data;
+			last = first+block->len;
+			cur = last-idx;
+
+			return *this;
 		}
 		/**
 		 * TODO iter++
 		 */
-		iterator operator++(int) {}
+		iterator operator++(int) {
+			iterator ret = *this;
+			if(++cur == last)
+			{
+				block = block->next;
+				first = block->data;
+				last = first+block->len;
+				cur = first;
+			}
+			return ret;
+		}
 		/**
 		 * TODO ++iter
 		 */
-		iterator& operator++() {}
+		iterator& operator++() {
+			if(++cur == last)
+			{
+				block = block->next;
+				first = block->data;
+				last = first+block->len;
+				cur = first;
+			}
+			return *this;
+		}
 		/**
 		 * TODO iter--
 		 */
-		iterator operator--(int) {}
+		iterator operator--(int) {
+			iterator ret = *this;
+			if(cur-- == first)
+			{
+				block = block->prev;
+				first = block->data;
+				last = first+block->len;
+				cur = last-1;
+			}
+			return ret;
+		}
 		/**
 		 * TODO --iter
 		 */
-		iterator& operator--() {}
+		iterator& operator--() {
+			if(cur-- == first)
+			{
+				block = block->prev;
+				first = block->data;
+				last = first+block->len;
+				cur = last-1;
+			}
+			return *this;
+		}
 		/**
 		 * TODO *it
 		 */
-		T& operator*() const {}
+		T& operator*() const {
+			return *cur;
+		}
 		/**
 		 * TODO it->field
 		 */
-		T* operator->() const noexcept {}
+		T* operator->() const noexcept {
+			return cur;
+		}
 		/**
 		 * a operator to check whether two iterators are same (pointing to the same memory).
 		 */
-		bool operator==(const iterator &rhs) const {}
-		bool operator==(const const_iterator &rhs) const {}
+		bool operator==(const iterator &rhs) const {
+			return cur == rhs.cur;
+		}
+		bool operator==(const const_iterator &rhs) const {
+			return cur == rhs.cur;
+		}
 		/**
 		 * some other operator for iterator.
 		 */
-		bool operator!=(const iterator &rhs) const {}
-		bool operator!=(const const_iterator &rhs) const {}
+		bool operator!=(const iterator &rhs) const {
+			return cur != rhs.cur;
+		}
+		bool operator!=(const const_iterator &rhs) const {
+			return cur != rhs.cur;
+		}
 	};
 	class const_iterator {
 		// it should has similar member method as iterator.
 		//  and it should be able to construct from an iterator.
 		private:
 			// data members.
+			const T* first;
+			const T* last;
+			const T* cur;
+			const node *block;
 		public:
 			const_iterator() {
 				// TODO
+				// nothing to do
 			}
 			const_iterator(const const_iterator &other) {
 				// TODO
+				first = other.first;
+				last = other.last;
+				cur = other.cur;
+				block = other.block;
 			}
 			const_iterator(const iterator &other) {
 				// TODO
+				first = other.first;
+				last = other.last;
+				cur = other.cur;
+				block = other.block;
 			}
 			// And other methods in iterator.
 			// And other methods in iterator.
@@ -263,21 +405,53 @@ public:
 	/**
 	 * returns an iterator to the beginning.
 	 */
-	iterator begin() {}
-	const_iterator cbegin() const {}
+	iterator begin() {
+		iterator iter;
+		iter.block = front->next;
+		iter.first = iter.block->data;
+		iter.last = iter.first+iter.block->size;
+		iter.cur = iter.first;
+		return iter;
+	}
+	const_iterator cbegin() const {
+		const_iterator iter;
+		iter.block = front->next;
+		iter.first = iter.block->data;
+		iter.last = iter.first+iter.block->size;
+		iter.cur = iter.first;
+		return iter;
+	}
 	/**
 	 * returns an iterator to the end.
 	 */
-	iterator end() {}
-	const_iterator cend() const {}
+	iterator end() {
+		iterator iter;
+		iter.block = rear;
+		iter.first = iter.block->data;
+		iter.last = iter.first;
+		iter.cur = iter.first;
+		return iter;
+	}
+	const_iterator cend() const {
+		const_iterator iter;
+		iter.block = rear;
+		iter.first = iter.block->data;
+		iter.last = iter.first;
+		iter.cur = iter.first;
+		return iter;
+	}
 	/**
 	 * checks whether the container is empty.
 	 */
-	bool empty() const {}
+	bool empty() const {
+		return len == 0;
+	}
 	/**
 	 * returns the number of elements
 	 */
-	size_t size() const {}
+	size_t size() const {
+		return len;
+	}
 	/**
 	 * clears the contents
 	 */
