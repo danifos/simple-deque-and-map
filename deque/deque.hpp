@@ -310,6 +310,128 @@ public:
 			// And other methods in iterator.
 			// And other methods in iterator.
 			// And other methods in iterator.
+
+			const_iterator operator+(const int &n) const {
+				const_iterator ret;
+				ret.block = block;
+				int idx = n+(cur-first);
+				while(idx >= ret.block->len) {
+					idx -= ret.block->len;
+					block = ret.block->next;
+				}
+				ret.first = ret.block->data;
+				ret.last = ret.first+ret.block->len;
+				ret.cur = ret.first+idx;
+				return ret;
+			}
+			const_iterator operator-(const int &n) const {
+				const_iterator ret;
+				ret.block = block;
+				int idx = n+(cur-first);
+				while(idx > ret.block->len) {
+					idx -= ret.block->len;
+					block = ret.block->prev;
+				}
+				ret.first = ret.block->data;
+				ret.last = ret.first+ret.block->len;
+				ret.cur = ret.last-idx;
+				return ret;
+			}
+			int operator-(const const_iterator &rhs) const {
+				if(container != rhs.container) throw invalid_iterator();
+				int ret;
+				if(block == rhs.block) ret = cur-rhs.cur;
+				else {
+					node *cur;
+					ret = 0;
+					for(cur = block->next; cur != rhs.block && cur != rear; cur = cur->next) ret += cur->len;
+					if(cur == rear) {
+						ret = 0;
+						for(cur = block->rear; cur != rhs.block && cur != front; cur = cur->prev) ret += cur->len;
+						ret += (cur-first+1) + (rhs.last-rhs.cur);
+					}
+					else ret += (last-cur) + (rhs.cur-rhs.first+1);
+				}
+				return ret;
+			}
+			const_iterator operator+=(const int &n) {
+				int idx = n+(cur-first);
+				while(idx >= block->len) {
+					idx -= block->len;
+					block = block->next;
+				}
+				first = block->data;
+				last = first+block->len;
+				cur = first+idx;
+				return *this;
+			}
+			const_iterator operator-=(const int &n) {
+				int idx = n+(last-cur);
+				while(idx > block->len) {
+					idx -= block->len;
+					block = block->prev;
+				}
+				first = block->data;
+				last = first+block->len;
+				cur = last-idx;
+				return *this;
+			}
+			const_iterator operator++(int) {
+				const_iterator ret = *this;
+				if(++cur == last) {
+					block = block->next;
+					first = block->data;
+					last = first+block->len;
+					cur = first;
+				}
+				return ret;
+			}
+			const_iterator& operator++() {
+				if(++cur == last) {
+					block = block->next;
+					first = block->data;
+					last = first+block->len;
+					cur = first;
+				}
+				return *this;
+			}
+			const_iterator operator--(int) {
+				iterator ret = *this;
+				if(cur-- == first) {
+					block = block->prev;
+					first = block->data;
+					last = first+block->len;
+					cur = last-1;
+				}
+				return ret;
+			}
+			const_iterator& operator--() {
+				if(cur-- == first) {
+					block = block->prev;
+					first = block->data;
+					last = first+block->len;
+					cur = last-1;
+				}
+				return *this;
+			}
+			T &const operator*() const {
+				return *cur;
+			}
+			T *const operator->() const noexcept {
+				return cur;
+			}
+			bool operator==(const const_iterator &rhs) const {
+				return cur == rhs.cur;
+			}
+			bool operator==(const iterator &rhs) const {
+				return cur == rhs.cur;
+			}
+			bool operator!=(const const_iterator &rhs) const {
+				return cur != rhs.cur;
+			}
+			bool operator!=(const iterator &rhs) const {
+				return cur != rhs.cur;
+			}
 	};
 	/**
 	 * TODO Constructors
