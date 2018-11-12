@@ -36,6 +36,37 @@ class deque {
 
 	size_t len;  // to make size() O(1)
 
+	// utility functions
+
+	// initialize front and rear
+	void node_init()
+	{
+		// front = new node; rear = new node(front); front->next = rear;
+		rear = (front = new node)->next = new node(front);
+	}
+
+	// add a new node as pos->prev and return it
+	node *node_before(node *pos)
+	{
+		pos->prev->prev->next = post->prev = new node(pos->prev, pos);
+		return pos->prev;
+	}
+
+	// add a new node as pos->next and return it
+	node *node_after(node *pos)
+	{
+		pos->next->next->prev = pos->next = new node(pos, pos->next);
+		return pos->next;
+	}
+
+	// remove a node
+	void node_remove(node *pos)
+	{
+		pos->prev->next = pos->next;
+		pos->next->prev = pos->prev;
+		delete[] pos;
+	}
+
 public:
 	class const_iterator;
 	class iterator {
@@ -48,6 +79,15 @@ public:
 		T* last;
 		T* cur;
 		node *block;
+		deuqe *container;
+
+		// utility functions
+		void set_block(node *b)
+		{
+			block = b;
+			first = b->data;
+			last = first+b->size;
+		}
 	public:
 		/**
 		 * return a new iterator which pointer n-next elements
@@ -92,6 +132,9 @@ public:
 		// if these two iterators points to different vectors, throw invaild_iterator.
 		int operator-(const iterator &rhs) const {
 			//TODO
+			if(container != rhs.container)
+				throw invalid_iterator();
+
 			int ret;
 			if(block == rhs.block)  // in the same block
 			{
@@ -110,8 +153,6 @@ public:
 					ret = 0;
 					for(cur = block->rear; cur != rhs.block && cur != front; cur = cur->prev)
 						ret += cur->len;
-					if(cur == front)  // not found
-						throw invalid_iterator();
 					// rhs before this
 					ret += (cur-first+1) + (rhs.last-rhs.cur);
 				}
@@ -244,6 +285,7 @@ public:
 			const T* last;
 			const T* cur;
 			const node *block;
+			const deque *container;
 		public:
 			const_iterator() {
 				// TODO
@@ -255,6 +297,7 @@ public:
 				last = other.last;
 				cur = other.cur;
 				block = other.block;
+				container = other.container;
 			}
 			const_iterator(const iterator &other) {
 				// TODO
@@ -262,6 +305,7 @@ public:
 				last = other.last;
 				cur = other.cur;
 				block = other.block;
+				container = other.container;
 			}
 			// And other methods in iterator.
 			// And other methods in iterator.
@@ -271,17 +315,17 @@ public:
 	 * TODO Constructors
 	 */
 	deque() {
-		// front = new node; rear = new node(front); front->next = rear;
-		rear = (front = new node)->next = new node(front);
+		node_init();
 	}
 	deque(const deque &other) {
-		rear = (front = new node)->next = new node(front);
+		node_init();
+		node *block;
 		for(node *cur = other.front->next; cur != other.rear; cur = cur->next)
 		{
-			// rear->next = new node(rear); rear = rear->next;
-			rear = rear->next = new node(rear);
-			std::copy(cur->data, cur->data+cur->size, rear->data);
-			rear->len = cur->len;
+			block = node_before(rear);
+			for(int i = 0; i < cur->size; ++i)
+				block->data[i] = cur->data[i];
+			block->len = cur->len;
 		}
 	}
 	/**
@@ -301,12 +345,14 @@ public:
 	 * TODO assignment operator
 	 */
 	deque &operator=(const deque &other) {  // just do what deque*(const deque &other) do
-		rear = (front = new node)->next = new node(front);
+		node_init();
+		node *block;
 		for(node *cur = other.front->next; cur != other.rear; cur = cur->next)
 		{
-			rear = rear->next = new node(rear);
-			std::copy(cur->data, cur->data+cur->size, rear->data);
-			rear->len = cur->len;
+			block = node_before(rear);
+			for(int i = 0; i < cur->size; ++i)
+				block->data[i] = cur->data[i];
+			block->len = cur->len;
 		}
 	}
 	/**
@@ -407,18 +453,16 @@ public:
 	 */
 	iterator begin() {
 		iterator iter;
-		iter.block = front->next;
-		iter.first = iter.block->data;
-		iter.last = iter.first+iter.block->size;
+		iter.set_block(front->next);
 		iter.cur = iter.first;
+		iter.container = this;
 		return iter;
 	}
 	const_iterator cbegin() const {
 		const_iterator iter;
-		iter.block = front->next;
-		iter.first = iter.block->data;
-		iter.last = iter.first+iter.block->size;
+		iter.set_block(front->next);
 		iter.cur = iter.first;
+		iter.container = this;
 		return iter;
 	}
 	/**
@@ -426,18 +470,16 @@ public:
 	 */
 	iterator end() {
 		iterator iter;
-		iter.block = rear;
-		iter.first = iter.block->data;
-		iter.last = iter.first;
+		iter.set_block(rear);
 		iter.cur = iter.first;
+		iter.container = this;
 		return iter;
 	}
 	const_iterator cend() const {
 		const_iterator iter;
-		iter.block = rear;
-		iter.first = iter.block->data;
-		iter.last = iter.first;
+		iter.set_block(rear);
 		iter.cur = iter.first;
+		iter.container = this;
 		return iter;
 	}
 	/**
@@ -455,39 +497,179 @@ public:
 	/**
 	 * clears the contents
 	 */
-	void clear() {}
+	void clear() {
+		node *p = front->next, *q;
+		while(p != rear)
+		{
+			q = p->next;
+			delete[] p->data;
+			delete p;
+			p = q;
+		}
+
+		len = 0;
+	}
 	/**
 	 * inserts elements at the specified locat on in the container.
 	 * inserts value before pos
 	 * returns an iterator pointing to the inserted value
 	 *     throw if the iterator is invalid or it point to a wrong place.
 	 */
-	iterator insert(iterator pos, const T &value) {}
+	iterator insert(iterator pos, const T &value) {
+		if(pos->container != this || pos->block == front)
+			throw invalid_iterator();  // ! it's still possible that block is a wild pointer
+
+		node *block = pos.block;
+		if(block->len == block->size)  // block is full
+		{
+			// block splits into 2 blocks from the insert point
+			// ... <-> [1 2 3 4 5 6 7 8] <-> ... insert an x before 4 =>
+			// ... <-> [1 2 3 x o o o o] <-> [4 5 6 7 8 o o o] <-> ...
+			node *ins = new node(block, block->next);
+			block->next = ins;
+			ins->next->prev = ins;
+
+			int i, j, idx = pos->cur-pos->first;
+			for(i = idx, j = 0; i < block.size; ++i, ++j)
+			{
+				ins->data[j] = block->data[i];
+			}
+			block->data[ins] = value;
+			block->len = idx+1;
+			ins->len = j;
+		}
+		else  // block is not full
+		{
+			// directly insert the element just as vector do
+			int idx = pos->cur-pos->first;
+			for(int i = block->len; i > idx; ++i)
+			{
+				block->data[i] = block->data[i-1];
+			}
+			block->data[idx] = value;
+			++block->len;
+		}
+
+		++len;
+
+		return pos;
+	}
 	/**
 	 * removes specified element at pos.
 	 * removes the element at pos.
 	 * returns an iterator pointing to the following element, if pos pointing to the last element, end() will be returned.
 	 * throw if the container is empty, the iterator is invalid or it points to a wrong place.
 	 */
-	iterator erase(iterator pos) {}
+	iterator erase(iterator pos) {
+		if(empty() || pos->container != this || pos->block == rear)
+			throw invalid_iterator();  // ! it's still possible that block is a wild pointer
+		
+		node *block = pos.block;
+		// directly erase the element just as vector do
+		for(int i = pos->cur-pos->first; i < block->len-1; ++i)
+		{
+			block.data[i] = block.data[i+1];
+		}
+		--block->len;
+		if(block->len == 0)  // block is empty now
+		{
+			pos.set_block(block->next);
+			pos.cur = pos.first;
+			node_remove(block);
+		}
+		else
+		{
+			++pos;  // iterator points to the following element
+		}
+
+		--len;
+
+		return pos;
+	}
 	/**
 	 * adds an element to the end
 	 */
-	void push_back(const T &value) {}
+	void push_back(const T &value) {
+		node *block = rear->prev;
+		if(block->len == block->size)  // prev of rear is full
+		{
+			// add a new block
+			block = node_before(rear);
+			block->data[0] = value;
+			block->len = 1;
+		}
+		else  // not full
+		{
+			block->data[block->len] = vaule;
+			++block->len;
+		}
+
+		++len;
+	}
 	/**
 	 * removes the last element
 	 *     throw when the container is empty.
 	 */
-	void pop_back() {}
+	void pop_back() {
+		if(empty())
+			throw container_is_empty();
+
+		node *block = rear->prev;
+		--block->len;
+		if(block->len == 0)  // prev of rear is empty now
+		{
+			// remove this block
+			node_remove(block);
+		}
+
+		--len;
+	}
 	/**
 	 * inserts an element to the beginning.
 	 */
-	void push_front(const T &value) {}
+	void push_front(const T &value) {
+		node *block = front->next;
+		if(block->len == block->size)  // next of front is full
+		{
+			// add a new block
+			block = node_after(front);
+			block->data[0] = value;
+			block->len = 1;
+		}
+		else  // not full
+		{
+			for(int i = block->len; i > 0; --i)
+			{
+				block->data[i] = block->data[i-1];
+			}
+			block->data[0] = value;
+			++block->len;
+		}
+
+		++len;
+	}
 	/**
 	 * removes the first element.
 	 *     throw when the container is empty.
 	 */
-	void pop_front() {}
+	void pop_front() {
+		if(empty())
+			throw container_is_empty();
+
+		node *block = front->next;
+		for(int i = 0; i < block->len-1; ++i)
+		{
+			block->data[i] = block->data[i+1];
+		}
+		--block->len;
+		if(block->len == 0)  // next of front is empty now
+		{
+			// remove this block
+			node_remove(block);
+		}
+
+		--len;
+	}
 };
 
 }
