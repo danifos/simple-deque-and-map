@@ -19,7 +19,7 @@ class deque {
 	// elements in this block is stored just like a vector (expect for double_space)
 	class node {
 	public:
-		T* data;  // elements stored in the block
+		T *data;  // elements stored in the block
 		size_t len;  // number of the elements
 		const size_t size;  // number of the maximum elements that can be stored
 		node *next;  // next node
@@ -103,7 +103,7 @@ public:
 			while(idx >= ret.block->len)
 			{
 				idx -= ret.block->len;
-				block = ret.block->next;
+				ret.block = ret.block->next;
 			}
 			ret.first = ret.block->data;
 			ret.last = ret.first+ret.block->len;
@@ -120,7 +120,7 @@ public:
 			while(idx > ret.block->len)
 			{
 				idx -= ret.block->len;
-				block = ret.block->prev;
+				ret.block = ret.block->prev;
 			}
 			ret.first = ret.block->data;
 			ret.last = ret.first+ret.block->len;
@@ -275,6 +275,7 @@ public:
 		bool operator!=(const const_iterator &rhs) const {
 			return cur != rhs.cur;
 		}
+		friend deque;
 	};
 	class const_iterator {
 		// it should has similar member method as iterator.
@@ -432,6 +433,7 @@ public:
 			bool operator!=(const iterator &rhs) const {
 				return cur != rhs.cur;
 			}
+			friend deque;
 	};
 	/**
 	 * TODO Constructors
@@ -638,7 +640,7 @@ public:
 	 *     throw if the iterator is invalid or it point to a wrong place.
 	 */
 	iterator insert(iterator pos, const T &value) {
-		if(pos->container != this || pos->block == head)
+		if(pos.container != this || pos.block == head)
 			throw invalid_iterator();  // ! it's still possible that block is a wild pointer
 
 		node *block = pos.block;
@@ -651,19 +653,19 @@ public:
 			block->next = ins;
 			ins->next->prev = ins;
 
-			int i, j, idx = pos->cur-pos->first;
-			for(i = idx, j = 0; i < block.size; ++i, ++j)
+			int i, j, idx = pos.cur-pos.first;
+			for(i = idx, j = 0; i < block->size; ++i, ++j)
 			{
 				ins->data[j] = block->data[i];
 			}
-			block->data[ins] = value;
+			block->data[idx] = value;
 			block->len = idx+1;
 			ins->len = j;
 		}
 		else  // block is not full
 		{
 			// directly insert the element just as vector do
-			int idx = pos->cur-pos->first;
+			int idx = pos.cur-pos.first;
 			for(int i = block->len; i > idx; ++i)
 			{
 				block->data[i] = block->data[i-1];
@@ -683,14 +685,14 @@ public:
 	 * throw if the container is empty, the iterator is invalid or it points to a wrong place.
 	 */
 	iterator erase(iterator pos) {
-		if(empty() || pos->container != this || pos->block == tail)
+		if(empty() || pos.container != this || pos.block == tail)
 			throw invalid_iterator();  // ! it's still possible that block is a wild pointer
 		
 		node *block = pos.block;
 		// directly erase the element just as vector do
-		for(int i = pos->cur-pos->first; i < block->len-1; ++i)
+		for(int i = pos.cur-pos.first; i < block->len-1; ++i)
 		{
-			block.data[i] = block.data[i+1];
+			block->data[i] = block->data[i+1];
 		}
 		--block->len;
 		if(block->len == 0)  // block is empty now
