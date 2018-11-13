@@ -31,7 +31,7 @@ class deque {
 		}
 
 		void del() {
-			for(size_t i = 0; i < size; ++i)
+			for(size_t i = 0; i < len; ++i)
 			{
 				delete data[i];
 			}
@@ -51,8 +51,9 @@ class deque {
 	// initialize head and tail
 	void node_init()
 	{
-		// head = new node; tail = new node(head); head->next = tail;
-		tail = (head = new node)->next = new node(head);
+		head = new node;
+		tail = new node(head);
+		head->next = tail;
 	}
 
 	// add a new node as pos->prev and return it
@@ -117,6 +118,7 @@ public:
 			}
 			ret.set_block(ret.block);
 			ret.cur = ret.first+idx;
+			ret.container = container;
 
 			return ret;
 		}
@@ -133,6 +135,7 @@ public:
 			}
 			ret.set_block(ret.block);
 			ret.cur = ret.last-idx;
+			ret.container = container;
 
 			return ret;
 		}
@@ -320,6 +323,7 @@ public:
 				}
 				ret.set_block(ret.block);
 				ret.cur = ret.first+idx;
+				ret.container = container;
 				return ret;
 			}
 			const_iterator operator-(const int &n) const {
@@ -332,6 +336,7 @@ public:
 				}
 				ret.set_block(ret.block);
 				ret.cur = ret.last-idx;
+				ret.container = container;
 				return ret;
 			}
 			int operator-(const const_iterator &rhs) const {
@@ -435,10 +440,11 @@ public:
 		for(node *cur = other.head->next; cur != other.tail; cur = cur->next)
 		{
 			block = node_before(tail);
-			for(int i = 0; i < cur->size; ++i)
+			for(int i = 0; i < cur->len; ++i)
 				block->data[i] = new T(*(cur->data[i]));
 			block->len = cur->len;
 		}
+		len = other.len;
 	}
 	/**
 	 * TODO Deconstructor
@@ -455,16 +461,22 @@ public:
 	/**
 	 * TODO assignment operator
 	 */
-	deque &operator=(const deque &other) {  // just do what deque*(const deque &other) do
-		node_init();
+	deque &operator=(const deque &other) {  // clear() and just do what deque*(const deque &other) do
+		if(head == other.head)  // avoid copying itself
+			return *this;
+
+		clear();
 		node *block;
 		for(node *cur = other.head->next; cur != other.tail; cur = cur->next)
 		{
 			block = node_before(tail);
-			for(int i = 0; i < cur->size; ++i)
+			for(int i = 0; i < cur->len; ++i)
 				block->data[i] = new T(*(cur->data[i]));
 			block->len = cur->len;
 		}
+		len = other.len;
+
+		return *this;
 	}
 	/**
 	 * access specified element with bounds checking
@@ -652,7 +664,7 @@ public:
 		{
 			// directly insert the element just as vector do
 			int idx = pos.cur-pos.first;
-			for(int i = block->len; i > idx; ++i)
+			for(int i = block->len; i > idx; --i)
 			{
 				block->data[i] = block->data[i-1];
 			}
@@ -701,7 +713,7 @@ public:
 	 */
 	void push_back(const T &value) {
 		node *block = tail->prev;
-		if(block->len == block->size)  // prev of tail is full
+		if(block == head || block->len == block->size)  // no node or prev of tail is full
 		{
 			// add a new block
 			block = node_before(tail);
@@ -739,7 +751,7 @@ public:
 	 */
 	void push_front(const T &value) {
 		node *block = head->next;
-		if(block->len == block->size)  // next of head is full
+		if(block == tail || block->len == block->size)  // no node or next of head is full
 		{
 			// add a new block
 			block = node_after(head);
