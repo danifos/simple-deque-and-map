@@ -29,16 +29,6 @@ class deque {
 			next(n), prev(p), len(0), size(block_size) {
 			data = new T *[size];
 		}
-
-		void del() {
-			for(size_t i = 0; i < size; ++i)
-			{
-				delete data[i];
-			}
-			delete[] data;
-			delete this;
-		}
-		
 	} *head, *tail;
 	// head: the head of the block link (head doesn't store elements)
 	// tail: the tail of the block link (tail doesn't store elements)
@@ -150,17 +140,17 @@ public:
 			}
 			else
 			{
-				node *tmp;
+				node *cur;
 				// find rhs to the tail
 				ret = 0;
-				for(tmp = block->next; tmp != rhs.block && tmp != tail; tmp = tmp->next)
-					ret += tmp->len;
-				if(tmp == tail)  // not found
+				for(cur = block->next; cur != rhs.block && cur != tail; cur = cur->next)
+					ret += cur->len;
+				if(cur == tail)  // not found
 				{
 					// find rhs to the head
 					ret = 0;
-					for(tmp = block->tail; tmp != rhs.block && tmp != head; tmp = tmp->prev)
-						ret += tmp->len;
+					for(cur = block->tail; cur != rhs.block && cur != head; cur = cur->prev)
+						ret += cur->len;
 					// rhs before this
 					ret += (cur-first+1) + (rhs.last-rhs.cur);
 				}
@@ -247,13 +237,13 @@ public:
 		 * TODO *it
 		 */
 		T& operator*() const {
-			return **cur;
+			return *cur;
 		}
 		/**
 		 * TODO it->field
 		 */
 		T* operator->() const noexcept {
-			return *cur;
+			return cur;
 		}
 		/**
 		 * a operator to check whether two iterators are same (pointing to the same memory).
@@ -280,9 +270,9 @@ public:
 		//  and it should be able to construct from an iterator.
 		private:
 			// data members.
-			const T** first;
-			const T** last;
-			const T** cur;
+			const T* first;
+			const T* last;
+			const T* cur;
 			const node *block;
 			const deque *container;
 		public:
@@ -339,14 +329,12 @@ public:
 				int ret;
 				if(block == rhs.block) ret = cur-rhs.cur;
 				else {
-					node *tmp;
+					node *cur;
 					ret = 0;
-					for(tmp = block->next; tmp != rhs.block && tmp != tail; tmp = tmp->next)
-						ret += tmp->len;
-					if(tmp == tail) {
+					for(cur = block->next; cur != rhs.block && cur != tail; cur = cur->next) ret += cur->len;
+					if(cur == tail) {
 						ret = 0;
-						for(tmp = block->tail; tmp != rhs.block && tmp != head; tmp = tmp->prev)
-							ret += tmp->len;
+						for(cur = block->tail; cur != rhs.block && cur != head; cur = cur->prev) ret += cur->len;
 						ret += (cur-first+1) + (rhs.last-rhs.cur);
 					}
 					else ret += (last-cur) + (rhs.cur-rhs.first+1);
@@ -404,10 +392,10 @@ public:
 				return *this;
 			}
 			const T & operator*() const {
-				return **cur;
+				return *cur;
 			}
 			const T * operator->() const noexcept {
-				return *cur;
+				return cur;
 			}
 			bool operator==(const const_iterator &rhs) const {
 				return cur == rhs.cur;
@@ -436,7 +424,7 @@ public:
 		{
 			block = node_before(tail);
 			for(int i = 0; i < cur->size; ++i)
-				block->data[i] = new T(*(cur->data[i]));
+				block->data[i] = cur->data[i];
 			block->len = cur->len;
 		}
 	}
@@ -448,7 +436,8 @@ public:
 		while(p)
 		{
 			q = p->next;
-			p->del();
+			delete[] p->data;
+			delete p;
 			p = q;
 		}
 	}
@@ -462,7 +451,7 @@ public:
 		{
 			block = node_before(tail);
 			for(int i = 0; i < cur->size; ++i)
-				block->data[i] = new T(*(cur->data[i]));
+				block->data[i] = cur->data[i];
 			block->len = cur->len;
 		}
 	}
@@ -613,7 +602,8 @@ public:
 		while(p != tail)
 		{
 			q = p->next;
-			p->del();
+			delete[] p->data;
+			delete p;
 			p = q;
 		}
 
@@ -644,7 +634,7 @@ public:
 			{
 				ins->data[j] = block->data[i];
 			}
-			block->data[idx] = new T(value);
+			block->data[idx] = value;
 			block->len = idx+1;
 			ins->len = j;
 		}
@@ -656,7 +646,7 @@ public:
 			{
 				block->data[i] = block->data[i-1];
 			}
-			block->data[idx] = new T(value);
+			block->data[idx] = value;
 			++block->len;
 		}
 
@@ -705,12 +695,12 @@ public:
 		{
 			// add a new block
 			block = node_before(tail);
-			block->data[0] = new T(value);
+			block->data[0] = value;
 			block->len = 1;
 		}
 		else  // not full
 		{
-			block->data[block->len] = new T(value);
+			block->data[block->len] = value;
 			++block->len;
 		}
 
@@ -743,7 +733,7 @@ public:
 		{
 			// add a new block
 			block = node_after(head);
-			block->data[0] = new T(value);
+			block->data[0] = value;
 			block->len = 1;
 		}
 		else  // not full
@@ -752,7 +742,7 @@ public:
 			{
 				block->data[i] = block->data[i-1];
 			}
-			block->data[0] = new T(value);
+			block->data[0] = value;
 			++block->len;
 		}
 
