@@ -3,6 +3,7 @@
 
 #include "exceptions.hpp"
 
+#include <iostream>
 #include <cstddef>
 
 namespace sjtu { 
@@ -156,13 +157,13 @@ public:
 				node *tmp;
 				// find rhs to the tail
 				ret = 0;
-				for(tmp = block->next; tmp != rhs.block && tmp != tail; tmp = tmp->next)
+				for(tmp = block->next; tmp != rhs.block && tmp != container->tail; tmp = tmp->next)
 					ret += tmp->len;
-				if(tmp == tail)  // not found
+				if(tmp == container->tail)  // not found
 				{
 					// find rhs to the head
 					ret = 0;
-					for(tmp = block->tail; tmp != rhs.block && tmp != head; tmp = tmp->prev)
+					for(tmp = block->prev; tmp != rhs.block && tmp != container->head; tmp = tmp->prev)
 						ret += tmp->len;
 					// rhs before this
 					ret += (cur-first+1) + (rhs.last-rhs.cur);
@@ -346,11 +347,11 @@ public:
 				else {
 					node *tmp;
 					ret = 0;
-					for(tmp = block->next; tmp != rhs.block && tmp != tail; tmp = tmp->next)
+					for(tmp = block->next; tmp != rhs.block && tmp != container->tail; tmp = tmp->next)
 						ret += tmp->len;
-					if(tmp == tail) {
+					if(tmp == container->tail) {
 						ret = 0;
-						for(tmp = block->tail; tmp != rhs.block && tmp != head; tmp = tmp->prev)
+						for(tmp = block->prev; tmp != rhs.block && tmp != container->head; tmp = tmp->prev)
 							ret += tmp->len;
 						ret += (cur-first+1) + (rhs.last-rhs.cur);
 					}
@@ -433,6 +434,7 @@ public:
 	 */
 	deque() {
 		node_init();
+		len = 0;
 	}
 	deque(const deque &other) {
 		node_init();
