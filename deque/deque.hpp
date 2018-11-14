@@ -112,7 +112,7 @@ public:
 			ret.block = block;
 
 			int idx = n+(cur-first);
-			while(idx >= ret.block->len)
+			while(ret.block != container->head && ret.block != container->tail && idx >= ret.block->len)
 			{
 				idx -= ret.block->len;
 				ret.block = ret.block->next;
@@ -125,11 +125,13 @@ public:
 		}
 		iterator operator-(const int &n) const {
 			//TODO
+			if(n == 0) return *this;  // avoid some errors
+
 			iterator ret;
 			ret.block = block;
 
 			int idx = n+(cur-first);
-			while(idx > ret.block->len)
+			while(ret.block != container->head && idx > ret.block->len)
 			{
 				idx -= ret.block->len;
 				ret.block = ret.block->prev;
@@ -158,7 +160,7 @@ public:
 				// find rhs to the tail
 				ret = 0;
 				for(tmp = block->next; tmp != rhs.block && tmp != container->tail; tmp = tmp->next)
-					ret += tmp->len;
+					ret -= tmp->len;
 				if(tmp == container->tail)  // not found
 				{
 					// find rhs to the head
@@ -166,17 +168,19 @@ public:
 					for(tmp = block->prev; tmp != rhs.block && tmp != container->head; tmp = tmp->prev)
 						ret += tmp->len;
 					// rhs before this
-					ret += (cur-first+1) + (rhs.last-rhs.cur);
+					ret += (cur-first) + (rhs.last-rhs.cur);
 				}
 				else  // rhs after this
 				{
-					ret += (last-cur) + (rhs.cur-rhs.first+1);
+					ret -= (last-cur) + (rhs.cur-rhs.first);
 				}
 			}
 			return ret;
 		}
 		iterator operator+=(const int &n) {
 			//TODO
+			if(n < 0) return *this -= -n;
+
 			int idx = n+(cur-first);
 			while(idx >= block->len)
 			{
@@ -190,6 +194,8 @@ public:
 		}
 		iterator operator-=(const int &n) {
 			//TODO
+			if(n < 0) return *this += -n;
+
 			int idx = n+(last-cur);
 			while(idx > block->len)
 			{
@@ -318,7 +324,7 @@ public:
 				const_iterator ret;
 				ret.block = block;
 				int idx = n+(cur-first);
-				while(idx >= ret.block->len) {
+				while(ret.block != container->head && ret.block != container->tail && idx >= ret.block->len) {
 					idx -= ret.block->len;
 					block = ret.block->next;
 				}
@@ -328,6 +334,7 @@ public:
 				return ret;
 			}
 			const_iterator operator-(const int &n) const {
+				if(n == 0) return *this;
 				const_iterator ret;
 				ret.block = block;
 				int idx = n+(cur-first);
@@ -360,6 +367,7 @@ public:
 				return ret;
 			}
 			const_iterator operator+=(const int &n) {
+				if(n < 0) return *this -= -n;
 				int idx = n+(cur-first);
 				while(idx >= block->len) {
 					idx -= block->len;
@@ -370,6 +378,7 @@ public:
 				return *this;
 			}
 			const_iterator operator-=(const int &n) {
+				if(n < 0) return *this += -n;
 				int idx = n+(last-cur);
 				while(idx > block->len) {
 					idx -= block->len;
@@ -644,6 +653,13 @@ public:
 			throw invalid_iterator();  // ! it's still possible that block is a wild pointer
 
 		node *block = pos.block;
+
+		if(block == tail)  // block->len is unavailable
+		{
+			push_back(value);  // push back instead
+			return end();
+		}
+		
 		if(block->len == block->size)  // block is full
 		{
 			// block splits into 2 blocks from the insert point
@@ -689,6 +705,7 @@ public:
 			throw invalid_iterator();  // ! it's still possible that block is a wild pointer
 		
 		node *block = pos.block;
+
 		// directly erase the element just as vector do
 		for(int i = pos.cur-pos.first; i < block->len-1; ++i)
 		{
