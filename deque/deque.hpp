@@ -12,6 +12,10 @@ const size_t block_size = 512;
 
 template<class T>
 class deque {
+public:
+	class const_iterator;
+	class iterator;
+private:
 	// private members
 
 	// utility class
@@ -19,17 +23,11 @@ class deque {
 	// node of the linked list, each represent a block of memory
 	// elements in this block is stored just like a vector (expect for double_space)
 	class node {
-	public:
 		T **data;  // pointers to the elements stored in the block
+		node *prev;  // prev node
+		node *next;  // next node
 		size_t len;  // number of the elements
 		const size_t size;  // number of the maximum elements that can be stored
-		node *next;  // next node
-		node *prev;  // prev node
-
-		node(node *p=nullptr, node *n=nullptr):
-			next(n), prev(p), len(0), size(block_size) {
-			data = new T *[size];
-		}
 
 		void del() {
 			for(size_t i = 0; i < len; ++i)
@@ -39,6 +37,16 @@ class deque {
 			delete[] data;
 			delete this;
 		}
+
+	public:
+		node(node *p=nullptr, node *n=nullptr):
+			next(n), prev(p), len(0), size(block_size) {
+			data = new T *[size];
+		}
+
+		friend iterator;
+		friend const_iterator;
+		friend deque;
 		
 	} *head, *tail;
 	// head: the head of the block link (head doesn't store elements)
@@ -60,14 +68,16 @@ class deque {
 	// add a new node as pos->prev and return it
 	node *node_before(node *pos)
 	{
-		pos->prev->prev->next = pos->prev = new node(pos->prev, pos);
+		pos->prev = new node(pos->prev, pos);
+		pos->prev->prev->next = pos->prev;
 		return pos->prev;
 	}
 
 	// add a new node as pos->next and return it
 	node *node_after(node *pos)
 	{
-		pos->next->next->prev = pos->next = new node(pos, pos->next);
+		pos->next = new node(pos, pos->next);
+		pos->next->next->prev = pos->next;
 		return pos->next;
 	}
 
@@ -108,6 +118,8 @@ public:
 		 */
 		iterator operator+(const int &n) const {
 			//TODO
+			if(n < 0) return *this-(-n);
+
 			iterator ret;
 			ret.block = block;
 
@@ -125,12 +137,12 @@ public:
 		}
 		iterator operator-(const int &n) const {
 			//TODO
-			if(n == 0) return *this;  // avoid some errors
+			if(n < 0) return *this+(-n);
 
 			iterator ret;
 			ret.block = block;
 
-			int idx = n+(cur-first);
+			int idx = n+(last-cur);
 			while(ret.block != container->head && idx > ret.block->len)
 			{
 				idx -= ret.block->len;
@@ -321,12 +333,13 @@ public:
 			// And other methods in iterator.
 
 			const_iterator operator+(const int &n) const {
+				if(n < 0) return *this-(-n);
 				const_iterator ret;
 				ret.block = block;
 				int idx = n+(cur-first);
 				while(ret.block != container->head && ret.block != container->tail && idx >= ret.block->len) {
 					idx -= ret.block->len;
-					block = ret.block->next;
+					ret.block = ret.block->next;
 				}
 				ret.set_block(ret.block);
 				ret.cur = ret.first+idx;
@@ -334,35 +347,41 @@ public:
 				return ret;
 			}
 			const_iterator operator-(const int &n) const {
-				if(n == 0) return *this;
+				if(n < 0) return *this+(-n);
 				const_iterator ret;
 				ret.block = block;
-				int idx = n+(cur-first);
-				while(idx > ret.block->len) {
+				int idx = n+(last-cur);
+				while(ret.block != container->head && idx > ret.block->len) {
 					idx -= ret.block->len;
-					block = ret.block->prev;
+					ret.block = ret.block->prev;
 				}
 				ret.set_block(ret.block);
 				ret.cur = ret.last-idx;
 				ret.container = container;
 				return ret;
 			}
-			int operator-(const const_iterator &rhs) const {
-				if(container != rhs.container) throw invalid_iterator();
+			int operator-(const iterator &rhs) const {
+				if(container != rhs.container)
+					throw invalid_iterator();
 				int ret;
-				if(block == rhs.block) ret = cur-rhs.cur;
+				if(block == rhs.block) {
+					ret = cur-rhs.cur;
+				}
 				else {
 					node *tmp;
 					ret = 0;
 					for(tmp = block->next; tmp != rhs.block && tmp != container->tail; tmp = tmp->next)
-						ret += tmp->len;
-					if(tmp == container->tail) {
+						ret -= tmp->len;
+					if(tmp == container->tail)
+					{
 						ret = 0;
 						for(tmp = block->prev; tmp != rhs.block && tmp != container->head; tmp = tmp->prev)
 							ret += tmp->len;
-						ret += (cur-first+1) + (rhs.last-rhs.cur);
+						ret += (cur-first) + (rhs.last-rhs.cur);
 					}
-					else ret += (last-cur) + (rhs.cur-rhs.first+1);
+					else {
+						ret -= (last-cur) + (rhs.cur-rhs.first);
+					}
 				}
 				return ret;
 			}
@@ -404,7 +423,7 @@ public:
 				return *this;
 			}
 			const_iterator operator--(int) {
-				iterator ret = *this;
+				const_iterator ret = *this;
 				if(cur-- == first) {
 					set_block(block->prev);
 					cur = last-1;
@@ -503,8 +522,9 @@ public:
 		if(pos < (len>>1))  // serach from head
 		{
 			idx = 0;
+			int i = 0;
 			for(cur = head->next; idx <= pos; cur = cur->next)
-				idx += cur->len;
+				{++i;idx += cur->len;}
 			cur = cur->prev;  // back to the prev one
 			return *(cur->data[pos - (idx - cur->len)]);
 		}
@@ -540,7 +560,8 @@ public:
 		node *cur;
 		if(pos < (len>>1)) {
 			idx = 0;
-			for(cur = head->next; idx <= pos; cur = cur->next) idx += cur->len;
+			int i = 0;
+			for(cur = head->next; idx <= pos; cur = cur->next) {++i;idx += cur->len;}
 			cur = cur->prev;
 			return *(cur->data[pos - (idx - cur->len)]);
 		}
@@ -640,6 +661,9 @@ public:
 			p = q;
 		}
 
+		head->next = tail;
+		tail->prev = head;
+
 		len = 0;
 	}
 	/**
@@ -665,9 +689,7 @@ public:
 			// block splits into 2 blocks from the insert point
 			// ... <-> [1 2 3 4 5 6 7 8] <-> ... insert an x before 4 =>
 			// ... <-> [1 2 3 x o o o o] <-> [4 5 6 7 8 o o o] <-> ...
-			node *ins = new node(block, block->next);
-			block->next = ins;
-			ins->next->prev = ins;
+			node *ins = node_after(block);
 
 			int i, j, idx = pos.cur-pos.first;
 			for(i = idx, j = 0; i < block->size; ++i, ++j)
@@ -707,6 +729,7 @@ public:
 		node *block = pos.block;
 
 		// directly erase the element just as vector do
+		delete block->data[pos.cur-pos.first];  // delete it
 		for(int i = pos.cur-pos.first; i < block->len-1; ++i)
 		{
 			block->data[i] = block->data[i+1];
@@ -717,10 +740,6 @@ public:
 			pos.set_block(block->next);
 			pos.cur = pos.first;
 			node_remove(block);
-		}
-		else
-		{
-			++pos;  // iterator points to the following element
 		}
 
 		--len;
@@ -756,6 +775,7 @@ public:
 			throw container_is_empty();
 
 		node *block = tail->prev;
+		delete block->data[block->len-1];  // delete it
 		--block->len;
 		if(block->len == 0)  // prev of tail is empty now
 		{
@@ -798,6 +818,7 @@ public:
 			throw container_is_empty();
 
 		node *block = head->next;
+		delete block->data[0];  // delete it
 		for(int i = 0; i < block->len-1; ++i)
 		{
 			block->data[i] = block->data[i+1];
