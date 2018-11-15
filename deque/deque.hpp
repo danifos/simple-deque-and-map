@@ -23,11 +23,11 @@ private:
 	// node of the linked list, each represent a block of memory
 	// elements in this block is stored just like a vector (expect for double_space)
 	class node {
-		T **data;  // pointers to the elements stored in the block
 		node *prev;  // prev node
 		node *next;  // next node
 		size_t len;  // number of the elements
 		const size_t size;  // number of the maximum elements that can be stored
+		T **data;  // pointers to the elements stored in the block
 
 		void del() {
 			for(size_t i = 0; i < len; ++i)
@@ -40,7 +40,7 @@ private:
 
 	public:
 		node(node *p=nullptr, node *n=nullptr):
-			next(n), prev(p), len(0), size(block_size) {
+			prev(p), next(n), len(0), size(block_size) {
 			data = new T *[size];
 		}
 
@@ -86,7 +86,7 @@ private:
 	{
 		pos->prev->next = pos->next;
 		pos->next->prev = pos->prev;
-		delete[] pos;
+		pos->del();
 	}
 
 public:
@@ -171,13 +171,13 @@ public:
 				node *tmp;
 				// find rhs to the tail
 				ret = 0;
-				for(tmp = block->next; tmp != rhs.block && tmp != container->tail; tmp = tmp->next)
+				for(tmp = block->next; tmp != rhs.block && tmp; tmp = tmp->next)
 					ret -= tmp->len;
-				if(tmp == container->tail)  // not found
+				if(tmp == nullptr)  // not found
 				{
 					// find rhs to the head
 					ret = 0;
-					for(tmp = block->prev; tmp != rhs.block && tmp != container->head; tmp = tmp->prev)
+					for(tmp = block->prev; tmp != rhs.block && tmp; tmp = tmp->prev)
 						ret += tmp->len;
 					// rhs before this
 					ret += (cur-first) + (rhs.last-rhs.cur);
@@ -194,7 +194,7 @@ public:
 			if(n < 0) return *this -= -n;
 
 			int idx = n+(cur-first);
-			while(idx >= block->len)
+			while(block != container->head && block != container->tail && idx >= block->len)
 			{
 				idx -= block->len;
 				block = block->next;
@@ -209,7 +209,7 @@ public:
 			if(n < 0) return *this += -n;
 
 			int idx = n+(last-cur);
-			while(idx > block->len)
+			while(block != container->head && idx > block->len)
 			{
 				idx -= block->len;
 				block = block->prev;
@@ -269,6 +269,8 @@ public:
 		 * TODO *it
 		 */
 		T& operator*() const {
+			if(block == container->head || block == container->tail)
+				throw invalid_iterator();
 			return **cur;
 		}
 		/**
@@ -302,11 +304,19 @@ public:
 		//  and it should be able to construct from an iterator.
 		private:
 			// data members.
-			const T** first;
-			const T** last;
-			const T** cur;
+			T* const* first;
+			T* const* last;
+			T* const* cur;
 			const node *block;
 			const deque *container;
+
+			// utility functions
+			void set_block(node *b)
+			{
+				block = b;
+				first = b->data;
+				last = first+b->len;
+			}
 		public:
 			const_iterator() {
 				// TODO
@@ -681,7 +691,7 @@ public:
 		if(block == tail)  // block->len is unavailable
 		{
 			push_back(value);  // push back instead
-			return end();
+			return --end();
 		}
 		
 		if(block->len == block->size)  // block is full
@@ -714,6 +724,7 @@ public:
 
 		++len;
 
+		pos.set_block(pos.block);
 		return pos;
 	}
 	/**
@@ -744,6 +755,12 @@ public:
 
 		--len;
 
+		pos.set_block(pos.block);
+		if(pos.cur != pos.first && pos.cur == pos.last)  // iterator reaches the end of the block (not tail)
+		{
+			pos.set_block(pos.block->next);
+			pos.cur = pos.first;
+		}
 		return pos;
 	}
 	/**
