@@ -123,7 +123,7 @@ public:
 			iterator ret;
 			ret.block = block;
 
-			int idx = n+(cur-first);
+			size_t idx = n+(cur-first);
 			while(ret.block != container->head && ret.block != container->tail && idx >= ret.block->len)
 			{
 				idx -= ret.block->len;
@@ -142,7 +142,7 @@ public:
 			iterator ret;
 			ret.block = block;
 
-			int idx = n+(last-cur);
+			size_t idx = n+(last-cur);
 			while(ret.block != container->head && idx > ret.block->len)
 			{
 				idx -= ret.block->len;
@@ -193,7 +193,7 @@ public:
 			//TODO
 			if(n < 0) return *this -= -n;
 
-			int idx = n+(cur-first);
+			size_t idx = n+(cur-first);
 			while(block != container->head && block != container->tail && idx >= block->len)
 			{
 				idx -= block->len;
@@ -208,7 +208,7 @@ public:
 			//TODO
 			if(n < 0) return *this += -n;
 
-			int idx = n+(last-cur);
+			size_t idx = n+(last-cur);
 			while(block != container->head && idx > block->len)
 			{
 				idx -= block->len;
@@ -346,7 +346,7 @@ public:
 				if(n < 0) return *this-(-n);
 				const_iterator ret;
 				ret.block = block;
-				int idx = n+(cur-first);
+				size_t idx = n+(cur-first);
 				while(ret.block != container->head && ret.block != container->tail && idx >= ret.block->len) {
 					idx -= ret.block->len;
 					ret.block = ret.block->next;
@@ -360,7 +360,7 @@ public:
 				if(n < 0) return *this+(-n);
 				const_iterator ret;
 				ret.block = block;
-				int idx = n+(last-cur);
+				size_t idx = n+(last-cur);
 				while(ret.block != container->head && idx > ret.block->len) {
 					idx -= ret.block->len;
 					ret.block = ret.block->prev;
@@ -397,7 +397,7 @@ public:
 			}
 			const_iterator operator+=(const int &n) {
 				if(n < 0) return *this -= -n;
-				int idx = n+(cur-first);
+				size_t idx = n+(cur-first);
 				while(idx >= block->len) {
 					idx -= block->len;
 					block = block->next;
@@ -408,7 +408,7 @@ public:
 			}
 			const_iterator operator-=(const int &n) {
 				if(n < 0) return *this += -n;
-				int idx = n+(last-cur);
+				size_t idx = n+(last-cur);
 				while(idx > block->len) {
 					idx -= block->len;
 					block = block->prev;
@@ -480,7 +480,7 @@ public:
 		for(node *cur = other.head->next; cur != other.tail; cur = cur->next)
 		{
 			block = node_before(tail);
-			for(int i = 0; i < cur->len; ++i)
+			for(size_t i = 0; i < cur->len; ++i)
 				block->data[i] = new T(*(cur->data[i]));
 			block->len = cur->len;
 		}
@@ -510,7 +510,7 @@ public:
 		for(node *cur = other.head->next; cur != other.tail; cur = cur->next)
 		{
 			block = node_before(tail);
-			for(int i = 0; i < cur->len; ++i)
+			for(size_t i = 0; i < cur->len; ++i)
 				block->data[i] = new T(*(cur->data[i]));
 			block->len = cur->len;
 		}
@@ -703,7 +703,7 @@ public:
 			// ... <-> [1 2 3 x o o o o] <-> [4 5 6 7 8 o o o] <-> ...
 			node *ins = node_after(block);
 
-			int i, j, idx = pos.cur-pos.first;
+			size_t i, j, idx = pos.cur-pos.first;
 			for(i = idx, j = 0; i < block->size; ++i, ++j)
 			{
 				ins->data[j] = block->data[i];
@@ -743,7 +743,7 @@ public:
 
 		// directly erase the element just as vector do
 		delete block->data[pos.cur-pos.first];  // delete it
-		for(int i = pos.cur-pos.first; i < block->len-1; ++i)
+		for(size_t i = pos.cur-pos.first; i < block->len-1; ++i)
 		{
 			block->data[i] = block->data[i+1];
 		}
@@ -838,7 +838,7 @@ public:
 
 		node *block = head->next;
 		delete block->data[0];  // delete it
-		for(int i = 0; i < block->len-1; ++i)
+		for(size_t i = 0; i < block->len-1; ++i)
 		{
 			block->data[i] = block->data[i+1];
 		}
