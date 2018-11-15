@@ -311,7 +311,7 @@ public:
 			const deque *container;
 
 			// utility functions
-			void set_block(node *b)
+			void set_block(const node *b)
 			{
 				block = b;
 				first = b->data;
@@ -370,7 +370,7 @@ public:
 				ret.container = container;
 				return ret;
 			}
-			int operator-(const iterator &rhs) const {
+			int operator-(const const_iterator &rhs) const {
 				if(container != rhs.container)
 					throw invalid_iterator();
 				int ret;
@@ -604,6 +604,7 @@ public:
 	 * throw container_is_empty when the container is empty.
 	 */
 	const T & front() const {
+		if(len == 0) throw container_is_empty();
 		return *(head->next->data[0]);
 	}
 	/**
@@ -611,6 +612,7 @@ public:
 	 * throw container_is_empty when the container is empty.
 	 */
 	const T & back() const {
+		if(len == 0) throw container_is_empty();
 		return *(tail->prev->data[tail->prev->len-1]);
 	}
 	/**
