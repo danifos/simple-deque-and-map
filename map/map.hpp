@@ -17,6 +17,29 @@ template<
 	class T,
 	class Compare = std::less<Key>
 > class map {
+
+	// private members
+	size_t len;
+
+	// private member class
+	class node {
+	public:
+		pair<const Key, T> value;
+		int height;
+		node *parent, *left, *right;
+		node *pre, *next;
+		node(const pair<const Key, T> &v, int h, node *p=nullptr, node *l=nullptr, node *r=nullptr):
+			value(v), height(h), parent(p), left(l), right(r) {}
+	} *root;
+
+	// utility functions
+	void make_empty(node *t) {
+		if(t == nullptr) return;
+		make_empty(t->left);
+		make_empty(t->right);
+		delete t;
+	}
+
 public:
 	/**
 	 * the internal type of data.
@@ -38,6 +61,8 @@ public:
 		 * TODO add data members
 		 *   just add whatever you want.
 		 */
+		node *cur;
+		map *container;
 	public:
 		iterator() {
 			// TODO
@@ -83,6 +108,8 @@ public:
 		 * See <http://kelvinh.github.io/blog/2013/11/20/overloading-of-member-access-operator-dash-greater-than-symbol-in-cpp/> for help.
 		 */
 		value_type* operator->() const noexcept {}
+
+		friend map;
 	};
 	class const_iterator {
 		// it should has similar member method as iterator.
@@ -106,16 +133,31 @@ public:
 	/**
 	 * TODO two constructors
 	 */
-	map() {}
+	map() {
+		len = 0;
+		root = nullptr;
+	}
 	map(const map &other) {}
 	/**
 	 * TODO assignment operator
 	 */
-	map & operator=(const map &other) {}
+	map & operator=(const map &other) {  // clear() and just do what map*(const map &other) do
+		if(head == other.head)  // avoid copying itself
+			return *this;
+		
+		clear();
+		if(other.empty())
+			return *this;
+
+		int l = 0;
+		node **stack = new node *[len];
+		// TODO
+		delete[] stack;
+	}
 	/**
 	 * TODO Destructors
 	 */
-	~map() {}
+	~map() {make_empty(root);}
 	/**
 	 * TODO
 	 * access specified element with bounds checking
@@ -150,15 +192,15 @@ public:
 	 * checks whether the container is empty
 	 * return true if empty, otherwise false.
 	 */
-	bool empty() const {}
+	bool empty() const {return len == 0;}
 	/**
 	 * returns the number of elements.
 	 */
-	size_t size() const {}
+	size_t size() const {return len;}
 	/**
 	 * clears the contents
 	 */
-	void clear() {}
+	void clear() {make_empty(root);}
 	/**
 	 * insert an element.
 	 * return a pair, the first of the pair is
@@ -186,7 +228,21 @@ public:
 	 * Iterator to an element with key equivalent to key.
 	 *   If no such element is found, past-the-end (see end()) iterator is returned.
 	 */
-	iterator find(const Key &key) {}
+	iterator find(const Key &key) {
+		node *t = root;
+		while(t && t->data.key != key)
+		{
+			if(t->data.key > key) t = t->left;
+			else t = t->right;
+		}
+		if(t)
+		{
+			iterator iter;
+			iter.cur = t;
+			iter.container = this;
+		}
+		else return end()-1;
+	}
 	const_iterator find(const Key &key) const {}
 };
 
