@@ -35,16 +35,24 @@ private:
 	// private member class
 	class node {
 	public:
-		value_type value;
+		value_type *value;
 		color_type color;
 		node *parent, *left, *right;
 		node *prev, *next;
-		node(const value_type &v, color_type c, node *p=nullptr, node *l=nullptr, node *r=nullptr):
+		node(value_type *v, color_type c, node *p=nullptr, node *l=nullptr, node *r=nullptr):
 			value(v), color(c), parent(p), left(l), right(r) {}
 		// copy from other node: only copy value and color, and initialize others with nullptr
-		node(const node &other): value(other.value), color(other.color) {
+		node(const node &other): color(other.color) {
+			value = new value_type(*other.value);
 			parent = left = right = nullptr;
 			prev = next = nullptr;
+		}
+		~node() {
+			delete value;
+		}
+		void set_value(value_type *other) {
+			delete value;
+			value = new value_type(*other);
 		}
 	} *root, *first, *last;
 	// first: prev of the first actual node; last: next of the last actual node
@@ -78,8 +86,8 @@ private:
 	// linked list
 	void _init() {
 		// initialize first and last, members of whom do not matter, except for first.prev and last.next
-		first = new node(value_type(-1, T()), black);
-		last = new node(value_type(-1, T()), black);
+		first = new node(new value_type(-1, T()), black);
+		last = new node(new value_type(-1, T()), black);
 		first->prev = nullptr;
 		first->next = last;
 		last->prev = first;
@@ -96,20 +104,20 @@ private:
 
 	node *_find(const Key &key) const {
 		node *t = root;
-		while(t && _ne(t->value.first, key))
+		while(t && _ne(t->value->first, key))
 		{
-			if(_gt(t->value.first, key)) t = t->left;
+			if(_gt(t->value->first, key)) t = t->left;
 			else t = t->right;
 		}
 		if(t == nullptr) t = last;  // not found it? Replace it with last;
 		return t;
 	}
 
-	node *&_index(const Key &key) const {  // returns a ptr for insertion
-		node *&t = root;
-		while(t && _ne(t->value.first, key))
+	node *_index(const Key &key) const {  // returns a ptr for insertion
+		node *t = root;
+		while(t && _ne(t->value->first, key))
 		{
-			if(_gt(t->value.first, key)) t = t->left;
+			if(_gt(t->value->first, key)) t = t->left;
 			else t = t->right;
 		}
 		return t;
@@ -119,10 +127,10 @@ private:
 	void LL(node *n) {
 		node *p = n->left, *t = p->left;
 		node tmp = *n;
-		n->value = p->value;
+		n->set_value(p->value);
 		n->left = t;
 		n->right = p;
-		p->value = tmp.value;
+		p->set_value(tmp.value);
 		p->left = p->right;
 		p->right = tmp.right;
 	}
@@ -130,10 +138,10 @@ private:
 	void LR(node *n) {
 		node *p = n->left, *t = p->right;
 		node tmp = *n;
-		n->value = t->value;
+		n->set_value(t->value);
 		n->right = t;
 		p->right = t->left;
-		t->value = tmp.value;
+		t->set_value(tmp.value);
 		t->left = t->right;
 		t->right = tmp.right;
 	}
@@ -141,10 +149,10 @@ private:
 	void RR(node *n) {
 		node *p = n->right, *t = p->right;
 		node tmp = *n;
-		n->value = p->value;
+		n->set_value(p->value);
 		n->right = t;
 		n->left = p;
-		p->value = tmp.value;
+		p->set_value(tmp.value);
 		p->right = p->left;
 		p->left = tmp.left;
 	}
@@ -152,15 +160,15 @@ private:
 	void RL(node *n) {
 		node *p = n->right, *t = p->left;
 		node tmp = *n;
-		n->value = t->value;
+		n->set_value(t->value);
 		n->left = t;
 		p->left = t->right;
-		t->value = tmp.value;
+		t->set_value(tmp.value);
 		t->right = t->left;
 		t->left = tmp.left;
 	}
 
-	node *_insert(node *n, const value_type &value) {
+	node *_insert(node *n, value_type *value) {
 		++len;
 		node *t, *p, *g;
 		
@@ -188,12 +196,12 @@ private:
 				}
 				g = p;
 				p = t;
-				t = (_gt(t->value.first, value.first) ? t->left : t->right);
+				t = (_gt(t->value->first, value->first) ? t->left : t->right);
 			}
 			else
 			{
 				t = new node(value, red);
-				if(_lt(value.first, p->value.first))
+				if(_lt(value->first, p->value->first))
 				{
 					p->left = t;
 					// insert t between p and p->prev
@@ -238,11 +246,11 @@ private:
 		n->prev->next = n->next;
 		n->next->prev = n->prev;
 
-		Key del = n->value.first;
+		Key del = n->value->first;
 		node *t, *p, *c;
 
 		if(root == nullptr) return;
-		if(_eq(root->value.first, del) && root->left == nullptr && root->right == nullptr)
+		if(_eq(root->value->first, del) && root->left == nullptr && root->right == nullptr)
 		{
 			delete root;
 			root = nullptr;
@@ -253,19 +261,19 @@ private:
 		while(true)
 		{
 			_erase_adjust(p, c, t, del);
-			if(_eq(c->value.first, del) && c->left && c->right)
+			if(_eq(c->value->first, del) && c->left && c->right)
 			{
 				node *tmp = c->right;
 				while(tmp->left) tmp = tmp->left;
-				c->value = tmp->value;
-				del = tmp->value.first;
+				c->set_value(tmp->value);
+				del = tmp->value->first;
 				p = c;
 				c = c->right;
 				t = p->left;
 				continue;
 			}
 
-			if(_eq(c->value.first, del))
+			if(_eq(c->value->first, del))
 			{
 				delete c;
 				if(p->left == c) p->left = nullptr;
@@ -274,7 +282,7 @@ private:
 				return;
 			}
 			p = c;
-			c = (_lt(del, p->value.first) ? p->left : p->right);
+			c = (_lt(del, p->value->first) ? p->left : p->right);
 			t = (c == p->left ? p->right : p->left);
 		}
 	}
@@ -332,7 +340,7 @@ private:
 		}
 		else
 		{
-			if(_eq(c->value.first, del))
+			if(_eq(c->value->first, del))
 			{
 				if(c->left && c->right)
 				{
@@ -359,7 +367,7 @@ private:
 			else
 			{
 				p = c;
-				c = (_lt(del, p->value.first) ? p->left : p->right);
+				c = (_lt(del, p->value->first) ? p->left : p->right);
 				t = (c == p->left ? p->right : p->left);
 				if(c->color == black)
 				{
@@ -467,7 +475,7 @@ public:
 		 * a operator to check whether two iterators are same (pointing to the same memory).
 		 */
 		value_type & operator*() const {
-			return cur->value;
+			return *cur->value;
 		}
 		bool operator==(const iterator &rhs) const {
 			return cur == rhs.cur;
@@ -490,7 +498,7 @@ public:
 		 * See <http://kelvinh.github.io/blog/2013/11/20/overloading-of-member-access-operator-dash-greater-than-symbol-in-cpp/> for help.
 		 */
 		value_type* operator->() const noexcept {
-			return &(cur->value);
+			return cur->value;
 		}
 
 		friend map;
@@ -540,7 +548,7 @@ public:
 				return *this;
 			}
 			const value_type & operator*() const {
-				return cur->value;
+				return *cur->value;
 			}
 			bool operator==(const iterator &rhs) const {
 				return cur == rhs.cur;
@@ -555,7 +563,7 @@ public:
 				return cur != rhs.cur;
 			}
 			const value_type* operator->() const noexcept {
-				return &(cur->value);
+				return cur->value;
 			}
 
 			friend map;
@@ -605,12 +613,12 @@ public:
 	T & at(const Key &key) {
 		node *n = _find(key);
 		if(n == last) throw index_out_of_bound();
-		return n->value.second;
+		return n->value->second;
 	}
 	const T & at(const Key &key) const {
 		node *n = _find(key);
 		if(n == last) throw index_out_of_bound();
-		return n->value.second;
+		return n->value->second;
 	}
 	/**
 	 * TODO
@@ -619,17 +627,17 @@ public:
 	 *   performing an insertion if such key does not already exist.
 	 */
 	T & operator[](const Key &key) {
-		node *&n = _index(key);
-		if(n == nullptr) n = _insert(n, value_type(key, T()));  // does T have a default constructor?
-		return n->value.second;
+		node *n = _index(key);
+		if(n == nullptr) n = _insert(n, new value_type(key, T()));  // does T have a default constructor?
+		return n->value->second;
 	}
 	/**
 	 * behave like at() throw index_out_of_bound if such key does not exist.
 	 */
 	const T & operator[](const Key &key) const {
-		node *&n = _index(key);
+		node *n = _index(key);
 		if(n == nullptr) throw index_out_of_bound();
-		return n->value.second;
+		return n->value->second;
 	}
 	/**
 	 * return a iterator to the beginning
@@ -688,7 +696,7 @@ public:
 	 *   the second one is true if insert successfully, or false.
 	 */
 	pair<iterator, bool> insert(const value_type &value) {
-		node *&n = _index(value.first);
+		node *n = _index(value.first);
 		node *ret;
 		bool success;
 		if(n)  // the key has exsisted, reject this operation
@@ -698,7 +706,7 @@ public:
 		}
 		else
 		{
-			ret = _insert(n, value);
+			ret = _insert(n, new value_type(value));
 			success = true;
 		}
 		iterator iter;
@@ -713,7 +721,7 @@ public:
 	 */
 	void erase(iterator pos) {
 		if(pos.container != this || pos.cur == last) throw invalid_iterator();
-		node *&n = pos.cur;
+		node *n = pos.cur;
 		++pos;  // point to the next iterator
 		_erase(n);
 	}
