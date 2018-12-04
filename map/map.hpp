@@ -47,32 +47,46 @@ private:
 			prev = next = nullptr;
 		}
 	} *root, *first, *last;
+	// first: prev of the first actual node; last: next of the last actual node
+	// we don't need to update first or last, but we only need to create and destroy them
 
 	// utility functions
-	bool _lt(const Key &a, const Key &b) {
+	bool _lt(const Key &a, const Key &b) const {
 		return cmp_ins(a, b);
 	}
 
-	bool _le(const Key &a, const Key &b) {
+	bool _le(const Key &a, const Key &b) const {
 		return !cmp_ins(b, a);
 	}
 
-	bool _gt(const Key &a, const Key &b) {
+	bool _gt(const Key &a, const Key &b) const {
 		return cmp_ins(b, a);
 	}
 
-	bool _ge(const Key &a, const Key &b) {
+	bool _ge(const Key &a, const Key &b) const {
 		return !cmp_ins(a, b);
 	}
 
-	bool _eq(const Key &a, const Key &b) {
+	bool _eq(const Key &a, const Key &b) const {
 		return !(cmp_ins(a, b) || cmp_ins(b, a));
 	}
 
-	bool _ne(const Key &a, const Key &b) {
+	bool _ne(const Key &a, const Key &b) const {
 		return cmp_ins(a, b) || cmp_ins(b, a);
 	}
 
+	// linked list
+	void _init() {
+		// initialize first and last, members of whom do not matter, except for first.prev and last.next
+		first = new node(value_type(-1, T()), black);
+		last = new node(value_type(-1, T()), black);
+		first->prev = nullptr;
+		first->next = last;
+		last->prev = first;
+		last->next = nullptr;
+	}
+
+	// RED BLACK TREE
 	void _make_empty(node *t) {
 		if(t == nullptr) return;
 		_make_empty(t->left);
@@ -80,7 +94,7 @@ private:
 		delete t;
 	}
 
-	node *_find(const Key &key) {
+	node *_find(const Key &key) const {
 		node *t = root;
 		while(t && _ne(t->value.first, key))
 		{
@@ -91,8 +105,8 @@ private:
 		return t;
 	}
 
-	node *&_index(const Key *key) {  // returns a ptr for insertion
-		node *t = root;
+	node *&_index(const Key &key) const {  // returns a ptr for insertion
+		node *&t = root;
 		while(t && _ne(t->value.first, key))
 		{
 			if(_gt(t->value.first, key)) t = t->left;
@@ -101,14 +115,262 @@ private:
 		return t;
 	}
 
-	node *&_insert(const node *&n, const value_type &value) {
-		++len;
-		// TODO
+	// rotations
+	void LL(node *n) {
+		node *p = n->left, *t = p->left;
+		node tmp = *n;
+		n->value = p->value;
+		n->left = t;
+		n->right = p;
+		p->value = tmp.value;
+		p->left = p->right;
+		p->right = tmp.right;
 	}
 
-	void _erase(const node *&n) {
+	void LR(node *n) {
+		node *p = n->left, *t = p->right;
+		node tmp = *n;
+		n->value = t->value;
+		n->right = t;
+		p->right = t->left;
+		t->value = tmp.value;
+		t->left = t->right;
+		t->right = tmp.right;
+	}
+
+	void RR(node *n) {
+		node *p = n->right, *t = p->right;
+		node tmp = *n;
+		n->value = p->value;
+		n->right = t;
+		n->left = p;
+		p->value = tmp.value;
+		p->right = p->left;
+		p->left = tmp.left;
+	}
+
+	void RL(node *n) {
+		node *p = n->right, *t = p->left;
+		node tmp = *n;
+		n->value = t->value;
+		n->left = t;
+		p->left = t->right;
+		t->value = tmp.value;
+		t->right = t->left;
+		t->left = tmp.left;
+	}
+
+	node *_insert(node *n, const value_type &value) {
+		++len;
+		node *t, *p, *g;
+		
+		if(root == nullptr)
+		{
+			root = new node(value, black);
+			// insert root between first and last
+			root->prev = first;
+			root->next = last;
+			first->next = root;
+			last->prev = root;
+			return root;
+		}
+
+		p = g = t = root;
+		while(true)
+		{
+			if(t)
+			{
+				if(t->left && t->left->color == red && t->right && t->right->color == red)
+				{
+					t->left->color = t->right->color = black;
+					t->color = red;
+					_insert_adjust(g, p, t);
+				}
+				g = p;
+				p = t;
+				t = (_gt(t->value.first, value.first) ? t->left : t->right);
+			}
+			else
+			{
+				t = new node(value, red);
+				if(_lt(value.first, p->value.first))
+				{
+					p->left = t;
+					// insert t between p and p->prev
+					t->prev = p->prev;
+					t->next = p;
+					p->prev->next = t;
+					p->prev = t;
+				}
+				else
+				{
+					p->right = t;
+					// insert t between p and p->next
+					t->prev = p;
+					t->next = p->next;
+					p->next->prev = t;
+					p->next = t;
+				}
+				_insert_adjust(g, p, t);
+				root->color = black;
+				return t;
+			}
+		}
+	}
+
+	void _insert_adjust(node *g, node *p, node *t) {
+		if(p->color) return;
+		if(p == root)
+		{
+			p->color = black;
+			return;
+		}
+		if(g->left == p)
+			if(p->left == t) LL(g);
+			else LR(g);
+		else if(p->right == t) RR(g);
+		else RL(g);
+	}
+
+	void _erase(node *n) {
 		--len;
-		// TODO
+		// cut the prev and next of n
+		n->prev->next = n->next;
+		n->next->prev = n->prev;
+
+		Key del = n->value.first;
+		node *t, *p, *c;
+
+		if(root == nullptr) return;
+		if(_eq(root->value.first, del) && root->left == nullptr && root->right == nullptr)
+		{
+			delete root;
+			root = nullptr;
+			return;
+		}
+
+		p = c = t = root;
+		while(true)
+		{
+			_erase_adjust(p, c, t, del);
+			if(_eq(c->value.first, del) && c->left && c->right)
+			{
+				node *tmp = c->right;
+				while(tmp->left) tmp = tmp->left;
+				c->value = tmp->value;
+				del = tmp->value.first;
+				p = c;
+				c = c->right;
+				t = p->left;
+				continue;
+			}
+
+			if(_eq(c->value.first, del))
+			{
+				delete c;
+				if(p->left == c) p->left = nullptr;
+				else p->right = nullptr;
+				root->color = black;
+				return;
+			}
+			p = c;
+			c = (_lt(del, p->value.first) ? p->left : p->right);
+			t = (c == p->left ? p->right : p->left);
+		}
+	}
+
+	void _erase_adjust(node *&p, node *&c, node *&t, const Key &del) {
+		if(c->color == red) return;
+		if(c == root)
+		{
+			if(c->left && c->right && c->right->color == c->left->color)
+			{
+				c->color = red;
+				c->left->color = c->right->color = black;
+				return;
+			}
+		}
+		
+		if((c->left && c->left->color || c->left == nullptr) && (c->right && c->right->color || c->right == nullptr))
+		{
+			if((t->left && t->left->color || t->left == nullptr) && (t->right && t->right->color || t->right == nullptr))
+			{
+				p->color = black;
+				t->color = c->color = red;
+			}
+			else
+			{
+				if(p->left == t)
+				{
+					if(t->left && t->left->color == red)
+					{
+						t->left->color = black;
+						LL(p);
+						p = t;
+					}
+					else
+					{
+						LR(p);
+						p = p->right;
+						p->color = black;
+					}
+				}
+				else if(t->right && t->right->color == red)
+				{
+					t->right->color = black;
+					RR(p);
+					p = t;
+				}
+				else
+				{
+					RL(p);
+					p = p->left;
+					p->color = black;
+				}
+				c->color = red;
+			}
+		}
+		else
+		{
+			if(_eq(c->value.first, del))
+			{
+				if(c->left && c->right)
+				{
+					if(c->right->color == black)
+					{
+						LL(c);
+						c = c->right;
+					}
+					return;
+				}
+				if(c->left)
+				{
+					LL(c);
+					p = c;
+					c = c->right;
+				}
+				else
+				{
+					RR(c);
+					p = c;
+					c = c->left;
+				}
+			}
+			else
+			{
+				p = c;
+				c = (_lt(del, p->value.first) ? p->left : p->right);
+				t = (c == p->left ? p->right : p->left);
+				if(c->color == black)
+				{
+					if(t == p->right) RR(p);
+					else LL(p);
+					p = t;
+					t = (c == p->left ? p->right : p->left);
+					_erase_adjust(p, c, t, del);
+				}
+			}
+		}
 	}
 
 	// build tree from another tree in inorder recursively
@@ -116,7 +378,7 @@ private:
 		// visit nodes
 		if(cur == nullptr) return nullptr;
 		node *left = _inorder(other, cur->left, prev);
-		node *n = new node(cur);
+		node *n = new node(*cur);
 		node *right = _inorder(other, cur->right, n);
 		// create a new node, and link these pointers
 		n->left = left;
@@ -131,7 +393,7 @@ private:
 		// last does not exist in the tree
 		if(cur->next == other.last)
 		{
-			last = n->next = new node(other.last);
+			last = n->next = new node(*other.last);
 			last->prev = n;
 		}
 		// return this node for connection
@@ -238,8 +500,8 @@ public:
 		//  and it should be able to construct from an iterator.
 		private:
 			// data members.
-			node *cur;
-			map *container;
+			const node *cur;
+			const map *container;
 		public:
 			const_iterator() {
 				// TODO
@@ -304,11 +566,10 @@ public:
 	map() {
 		len = 0;
 		root = nullptr;
-		last = new node(value_type(-1, T()), black);  // members in last does not matter
-		last.next = nullptr;  // except for next: it must be nullptr
-		first = last;  // first is the same as last when map is empty
+		_init();
 	}
 	map(const map &other) {
+		_init(); // but first, init first and last
 		len = other.len;
 		if(other.empty())
 			return;  // other.root doesn't even exist!
@@ -318,18 +579,22 @@ public:
 	 * TODO assignment operator
 	 */
 	map & operator=(const map &other) {  // clear() and just do what map*(const map &other) do
-		if(head == other.head)  // avoid copying itself
+		if(first == other.first)  // avoid copying itself
 			return *this;
 		clear();
 		if(other.empty())
 			return *this;
 		_inorder(other, other.root, nullptr);
+		return *this;
 	}
 	/**
 	 * TODO Destructors
 	 */
 	~map() {
 		_make_empty(root);
+		// also, delete first and last
+		delete first;
+		delete last;
 	}
 	/**
 	 * TODO
@@ -438,8 +703,8 @@ public:
 		}
 		iterator iter;
 		iter.cur = ret;
-		iter.container = *this;
-		return pair(iter, success);
+		iter.container = this;
+		return pair<iterator, bool>(iter, success);
 	}
 	/**
 	 * erase the element at pos.
@@ -448,7 +713,7 @@ public:
 	 */
 	void erase(iterator pos) {
 		if(pos.container != this || pos.cur == last) throw invalid_iterator();
-		node *&n = pos.cur->value;
+		node *&n = pos.cur;
 		++pos;  // point to the next iterator
 		_erase(n);
 	}
@@ -461,7 +726,7 @@ public:
 	 */
 	size_t count(const Key &key) const {
 		node *n = _index(key);
-		if(p) return 1;
+		if(n) return 1;
 		return 0;
 	}
 	/**
