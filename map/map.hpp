@@ -66,15 +66,14 @@ private:
 	void swap_nodes(node *a, node *b)
 	{
 		if(a == np)
-			np = b;// cout << "np from " << a->value->first.val << " to " << b->value->first.val << endl;
+			np = b;
 		else if(b == np)
-			np = a;// cout << "np from " << b->value->first.val << " to " << a->value->first.val << endl;
+			np = a;
 		if(a == nn)
-			nn = b;// cout << "nn from " << a->value->first.val << " to " << b->value->first.val << endl;
+			nn = b;
 		else if(b == nn)
-			nn = a;// cout << "nn from " << b->value->first.val << " to " << a->value->first.val << endl;
+			nn = a;
 		assert(_lt(a->value->first, b->value->first));
-		//assert(a->prev && a->next && b->prev && b->next);
 		if(a->next == b)
 		{  // p<->b<->a<->n
 			node *p = a->prev, *n = b->next;
@@ -150,8 +149,8 @@ private:
 	void _init() {
 		// initialize first and last, members of whom do not matter,
 		// except for first.prev and last.next
-		first = new node(new value_type(-1, T()), black);
-		last = new node(new value_type(-1, T()), black);
+		first = new node(nullptr, black);
+		last = new node(nullptr, black);
 		first->prev = nullptr;
 		first->next = last;
 		last->prev = first;
@@ -198,7 +197,6 @@ private:
 		p->set_value(tmp.value);
 		p->left = p->right;
 		p->right = tmp.right;
-		//cout << "LL" << endl;
 	}
 
 	void LR(node *g) {
@@ -211,7 +209,6 @@ private:
 		t->set_value(tmp.value);
 		t->left = t->right;
 		t->right = tmp.right;
-		//cout << "LR" << endl;
 	}
 
 	void RR(node *g) {
@@ -224,7 +221,6 @@ private:
 		p->set_value(tmp.value);
 		p->right = p->left;
 		p->left = tmp.left;
-		//cout << "RR" << endl;
 	}
 
 	void RL(node *g) {
@@ -237,7 +233,6 @@ private:
 		t->set_value(tmp.value);
 		t->right = t->left;
 		t->left = tmp.left;
-		//cout << "RL" << endl;
 	}
 
 	node *_insert(node *n, value_type *value) {
@@ -264,7 +259,13 @@ private:
 				{
 					t->left->color = t->right->color = black;
 					t->color = red;
+					np = p;
+					nn = t;
 					_insert_adjust(g, p, t);
+					p = np;
+					t = nn;
+					np = nullptr;
+					nn = nullptr;
 				}
 				g = p;
 				p = t;
@@ -291,11 +292,15 @@ private:
 					p->next->prev = t;
 					p->next = t;
 				}
+				np = t;
 				_insert_adjust(g, p, t);
 				root->color = black;
+				t = np;
+				np = nullptr;
 				return t;
 			}
 		}
+		assert(false);
 	}
 
 	void _insert_adjust(node *g, node *p, node *t) {
@@ -316,29 +321,12 @@ private:
 	void _erase(node *n) {
 		--len;
 
-		DEBUG = (n->value->first.val == -1);
 		const Key &x = n->value->first;
 		const Key *del = new Key(n->value->first);
 		node *t, *p, *c;
 		bool flag = false;
-		// a<->b<->c<->d
 		np = n->prev;
 		nn = n->next;
-		//np->next = nullptr;
-		//nn->prev = nullptr;
-		//n->prev = nullptr;
-		//n->next = nullptr;
-		// a-> b <-c<->d
-		/*np = n->prev;
-		nn = n->next;
-		np->next = nn;
-		nn->prev = np;
-		n->prev = nullptr;
-		n->next = nullptr;*/
-		//cout << "delete " << n->value->first.val << ", prev: " << np->value->first.val
-		//     << ", next: " << nn->value->first.val << endl;
-		// a<->c<->d  b
-		// np  nn     n
 
 		if(root == nullptr) return;
 		if(_eq(root->value->first, x) && root->left == nullptr && root->right == nullptr)
@@ -360,31 +348,8 @@ private:
 			{
 				node *tmp = c->right;
 				while(tmp->left) tmp = tmp->left;  // find the stand
-				assert(c->value->first.val+1 == tmp->value->first.val);
-				// a-> b <-c<->d
-				// np  c tmp/nn
-				//c->prev = np;
-				//c->next = nn;
 				np = tmp->prev;
 				nn = tmp->next;
-				//tmp->prev = nullptr;
-				//tmp->next = nullptr;
-				// a<->b-> c <-d
-				//   c/np tmp  nn
-				// a<->c<->d  b
-				// np nn/tmp  c
-				/*assert(nn != c);
-				c->prev = tmp->prev;
-				c->next = tmp->next;
-				c->prev->next = c;
-				c->next->prev = c;
-				tmp->prev = nullptr;
-				tmp->next = nullptr;
-				np = c->prev;
-				nn = c->next;*/
-				//cout << "change to " << tmp->value->first.val << ", prev: " << np->value->first.val
-		     	//	 << ", next: " << nn->value->first.val << endl;
-				// a<->b<->d  c
 				c->set_value(tmp->value);
 				delete del;
 				del = new Key(tmp->value->first);  // now delete the stand...
@@ -396,24 +361,14 @@ private:
 
 			if(_eq(c->value->first, *del))
 			{
-				//assert(_lt(c->prev->value->first, c->next->value->first));
-				//cout << c->prev->value->first.val << ' ' << c->value->first.val << ' '
-				//	 << c->next->value->first.val << endl;
-				// cut the prev and next of c
 				if(flag)
 				{
 					c->prev->next = c->next;
 					c->next->prev = c->prev;
 					flag = false;
 				}
-				//assert(_lt(c->prev->value->first, c->next->value->first));
-				//cout << np->value->first.val << ' ' << c->value->first.val << ' '
-				//     << nn->value->first.val << endl;
 				np->next = nn;
 				nn->prev = np;
-				//cout << "delete " << c->value->first.val
-				//	 << ", link " << np->value->first.val
-				//	 << " and " << nn->value->first.val << endl;
 				assert(nn != c);
 				delete c;
 				if(p->left == c) p->left = nullptr;
@@ -674,11 +629,11 @@ public:
 				return iter;
 			}
 			const_iterator & operator++() {
-				cur = cur->ret;
+				cur = cur->next;
 				return *this;
 			}
 			const_iterator operator--(int) {
-				iterator iter = *this;
+				const_iterator iter = *this;
 				cur = cur->prev;
 				return iter;
 			}
