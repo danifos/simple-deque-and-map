@@ -539,6 +539,7 @@ public:
 		 * TODO iter++
 		 */
 		iterator operator++(int) {
+			if(cur == container->last) throw invalid_iterator();
 			iterator iter = *this;
 			cur = cur->next;
 			return iter;
@@ -547,6 +548,7 @@ public:
 		 * TODO ++iter
 		 */
 		iterator & operator++() {
+			if(cur == container->last) throw invalid_iterator();
 			cur = cur->next;
 			return *this;
 		}
@@ -554,6 +556,7 @@ public:
 		 * TODO iter--
 		 */
 		iterator operator--(int) {
+			if(cur == container->first->next) throw invalid_iterator();
 			iterator iter = *this;
 			cur = cur->prev;
 			return iter;
@@ -562,6 +565,7 @@ public:
 		 * TODO --iter
 		 */
 		iterator & operator--() {
+			if(cur == container->first->next) throw invalid_iterator();
 			cur = cur->prev;
 			return *this;
 		}
@@ -624,20 +628,24 @@ public:
 			// And other methods in iterator.
 			// And other methods in iterator.
 			const_iterator operator++(int) {
+				if(cur == container->last) throw invalid_iterator();
 				const_iterator iter = *this;
 				cur = cur->next;
 				return iter;
 			}
 			const_iterator & operator++() {
+				if(cur == container->last) throw invalid_iterator();
 				cur = cur->next;
 				return *this;
 			}
 			const_iterator operator--(int) {
+				if(cur == container->first->next) throw invalid_iterator();
 				const_iterator iter = *this;
 				cur = cur->prev;
 				return iter;
 			}
 			const_iterator & operator--() {
+				if(cur == container->first->next) throw invalid_iterator();
 				cur = cur->prev;
 				return *this;
 			}
@@ -832,7 +840,7 @@ public:
 	void erase(iterator pos) {
 		if(pos.container != this || pos.cur == last) throw invalid_iterator();
 		node *n = pos.cur;
-		++pos;  // point to the next iterator
+		//++pos;  // point to the next iterator
 		_erase(n);
 	}
 	/**
