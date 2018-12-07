@@ -704,6 +704,7 @@ public:
 	 * TODO Destructors
 	 */
 	~map() {
+		if(empty()) return;
 		_make_empty(root);
 		// also, delete first and last
 		delete first;
