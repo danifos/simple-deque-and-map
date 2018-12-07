@@ -28,13 +28,13 @@ public:
 	 * You can use sjtu::map as value_type by typedef.
 	 */
 	typedef pair<const Key, T> value_type;
+	class iterator;
 
 private:
 	// private members
 	Compare cmp_ins;
 	size_t len;
 	enum color_type {red, black};
-	bool DEBUG = false;
 
 	// private member class
 	class node {
@@ -58,9 +58,11 @@ private:
 			delete value;
 			value = new value_type(*other);
 		}
-	} *root, *first, *last, *np, *nn;
+	} *root, *first, *last, *np, *nn, *holy_shit;
 	// first: prev of the first actual node; last: next of the last actual node
 	// we don't need to update first or last, but we only need to create and destroy them
+	iterator *holy_shit_owner;
+	bool SHIT;  // bull shit
 
 	// utility functions
 	void swap_nodes(node *a, node *b)
@@ -73,6 +75,10 @@ private:
 			nn = b;
 		else if(b == nn)
 			nn = a;
+		if(a == holy_shit)
+			holy_shit = b;
+		else if(b == holy_shit)
+			holy_shit = a;
 		assert(_lt(a->value->first, b->value->first));
 		if(a->next == b)
 		{  // p<->b<->a<->n
@@ -155,6 +161,16 @@ private:
 		first->next = last;
 		last->prev = first;
 		last->next = nullptr;
+		// initialize other members
+		np = nn = holy_shit = nullptr;
+		holy_shit_owner = nullptr;
+		SHIT = false;
+	}
+
+	void _re_shit() {
+		holy_shit = nullptr;
+		holy_shit_owner = nullptr;
+		SHIT = false;
 	}
 
 	// RED BLACK TREE
@@ -351,6 +367,7 @@ private:
 				np = tmp->prev;
 				nn = tmp->next;
 				c->set_value(tmp->value);
+				if(tmp == holy_shit) holy_shit = c;
 				delete del;
 				del = new Key(tmp->value->first);  // now delete the stand...
 				p = c;
@@ -542,6 +559,8 @@ public:
 			if(cur == container->last) throw invalid_iterator();
 			iterator iter = *this;
 			cur = cur->next;
+			container->holy_shit = cur;
+			container->holy_shit_owner = this;
 			return iter;
 		}
 		/**
@@ -559,6 +578,8 @@ public:
 			if(cur == container->first->next) throw invalid_iterator();
 			iterator iter = *this;
 			cur = cur->prev;
+			container->holy_shit = cur;
+			container->holy_shit_owner = this;
 			return iter;
 		}
 		/**
@@ -596,6 +617,13 @@ public:
 		 * See <http://kelvinh.github.io/blog/2013/11/20/overloading-of-member-access-operator-dash-greater-than-symbol-in-cpp/> for help.
 		 */
 		value_type* operator->() const noexcept {
+			if(container->holy_shit_owner == this && container->holy_shit)
+			{
+				node *tmp = container->holy_shit;
+				container->holy_shit = nullptr;
+				container->holy_shit_owner = nullptr;
+				return tmp->value;
+			}
 			return cur->value;
 		}
 
@@ -670,18 +698,18 @@ public:
 
 			friend map;
 	};
+	friend const_iterator;
+	friend iterator;
 	/**
 	 * TODO two constructors
 	 */
 	map() {
+		_init();
 		len = 0;
 		root = nullptr;
-		np = nn = nullptr;
-		_init();
 	}
 	map(const map &other) {
-		np = nn = nullptr;
-		_init(); // but first, init first and last
+		_init();  // but first, init first and last
 		len = other.len;
 		if(other.empty())
 			return;  // other.root doesn't even exist!
@@ -695,6 +723,7 @@ public:
 	 * TODO assignment operator
 	 */
 	map & operator=(const map &other) {  // clear() and just do what map*(const map &other) do
+		_re_shit();
 		if(first == other.first)  // avoid copying itself
 			return *this;
 		clear();
@@ -725,6 +754,7 @@ public:
 	 * If no such element exists, an exception of type `index_out_of_bound'
 	 */
 	T & at(const Key &key) {
+		_re_shit();
 		node *n = _find(key);
 		if(n == last) throw index_out_of_bound();
 		return n->value->second;
@@ -741,6 +771,7 @@ public:
 	 *   performing an insertion if such key does not already exist.
 	 */
 	T & operator[](const Key &key) {
+		_re_shit();
 		node *n = _index(key);
 		if(n == nullptr) n = _insert(n, new value_type(key, T()));
 		return n->value->second;
@@ -757,6 +788,7 @@ public:
 	 * return a iterator to the beginning
 	 */
 	iterator begin() {
+		_re_shit();
 		iterator iter;
 		iter.cur = first->next;
 		iter.container = this;
@@ -801,6 +833,7 @@ public:
 	 * clears the contents
 	 */
 	void clear() {
+		_re_shit();
 		len = 0;
 		_make_empty(root);
 		first->next = last;
@@ -814,6 +847,7 @@ public:
 	 *   the second one is true if insert successfully, or false.
 	 */
 	pair<iterator, bool> insert(const value_type &value) {
+		_re_shit();
 		node *n = _index(value.first);
 		node *ret;
 		bool success;
@@ -862,6 +896,7 @@ public:
 	 *   If no such element is found, past-the-end (see end()) iterator is returned.
 	 */
 	iterator find(const Key &key) {
+		_re_shit();
 		iterator iter;
 		iter.cur = _find(key);
 		iter.container = this;
