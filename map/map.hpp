@@ -9,8 +9,6 @@
 #include <cstddef>
 #include "utility.hpp"
 #include "exceptions.hpp"
-#include <iostream>
-#include <cassert>
 using namespace std;
 
 namespace sjtu {
@@ -59,13 +57,16 @@ private:
 			value = new value_type(*other);
 		}
 	} *root, *first, *last, *np, *nn, *holy_shit;
-	// first: prev of the first actual node; last: next of the last actual node
 	// we don't need to update first or last, but we only need to create and destroy them
-	iterator *holy_shit_owner;
-	bool SHIT;  // bull shit
+	// first: prev of the first actual node; last: next of the last actual node;
+	// np, nn: temporary global nodes, see _insert(), _erase() and copy functions.
+	//         maintained in _swap_nodes()
+	// holy_shit: just a shit, see operator++(int) and operator--(int) in iterator
+	iterator *holy_shit_owner;  // another shit that owns the previous shit
+	bool SHIT;  // (bull shit) do we use the previous 2 pieces of shit?
 
 	// utility functions
-	void swap_nodes(node *a, node *b)
+	void _swap_nodes(node *a, node *b)
 	{
 		if(a == np)
 			np = b;
@@ -79,7 +80,6 @@ private:
 			holy_shit = b;
 		else if(b == holy_shit)
 			holy_shit = a;
-		assert(_lt(a->value->first, b->value->first));
 		if(a->next == b)
 		{  // p<->b<->a<->n
 			node *p = a->prev, *n = b->next;
@@ -167,6 +167,8 @@ private:
 		SHIT = false;
 	}
 
+	// a shit function that reset the other shit (that's for erase(it++) and erase(it--))
+	// add it to every public methods that it can be added to, except for erase()
 	void _re_shit() {
 		holy_shit = nullptr;
 		holy_shit_owner = nullptr;
@@ -205,7 +207,7 @@ private:
 	// rotations
 	void LL(node *g) {
 		node *p = g->left, *t = p->left;
-		swap_nodes(p, g);
+		_swap_nodes(p, g);
 		node tmp = *g;
 		g->set_value(p->value);
 		g->left = t;
@@ -217,7 +219,7 @@ private:
 
 	void LR(node *g) {
 		node *p = g->left, *t = p->right;
-		swap_nodes(t, g);
+		_swap_nodes(t, g);
 		node tmp = *g;
 		g->set_value(t->value);
 		g->right = t;
@@ -229,7 +231,7 @@ private:
 
 	void RR(node *g) {
 		node *p = g->right, *t = p->right;
-		swap_nodes(g, p);
+		_swap_nodes(g, p);
 		node tmp = *g;
 		g->set_value(p->value);
 		g->right = t;
@@ -241,7 +243,7 @@ private:
 
 	void RL(node *g) {
 		node *p = g->right, *t = p->left;
-		swap_nodes(g, t);
+		_swap_nodes(g, t);
 		node tmp = *g;
 		g->set_value(t->value);
 		g->left = t;
@@ -251,7 +253,7 @@ private:
 		t->left = tmp.left;
 	}
 
-	node *_insert(node *n, value_type *value) {
+	node *_insert(value_type *value) {
 		++len;
 		node *t, *p, *g;
 		
@@ -316,7 +318,6 @@ private:
 				return t;
 			}
 		}
-		assert(false);
 	}
 
 	void _insert_adjust(node *g, node *p, node *t) {
@@ -386,7 +387,6 @@ private:
 				}
 				np->next = nn;
 				nn->prev = np;
-				assert(nn != c);
 				delete c;
 				if(p->left == c) p->left = nullptr;
 				else p->right = nullptr;
@@ -398,7 +398,6 @@ private:
 			p = c;
 			c = (_lt(*del, p->value->first) ? p->left : p->right);
 			t = (c == p->left ? p->right : p->left);
-			assert(c != nullptr);
 		}
 		np = nn = nullptr;
 		delete del;
@@ -416,11 +415,11 @@ private:
 			}
 		}
 		
-		if((c->left && c->left->color || c->left == nullptr)
-		&& (c->right && c->right->color || c->right == nullptr))
+		if(((c->left && c->left->color) || c->left == nullptr)
+		&& ((c->right && c->right->color) || c->right == nullptr))
 		{
-			if((t->left && t->left->color || t->left == nullptr)
-			&& (t->right && t->right->color || t->right == nullptr))
+			if(((t->left && t->left->color) || t->left == nullptr)
+			&& ((t->right && t->right->color) || t->right == nullptr))
 			{
 				p->color = black;
 				t->color = c->color = red;
@@ -773,7 +772,7 @@ public:
 	T & operator[](const Key &key) {
 		_re_shit();
 		node *n = _index(key);
-		if(n == nullptr) n = _insert(n, new value_type(key, T()));
+		if(n == nullptr) n = _insert(new value_type(key, T()));
 		return n->value->second;
 	}
 	/**
@@ -858,7 +857,7 @@ public:
 		}
 		else
 		{
-			ret = _insert(n, new value_type(value));
+			ret = _insert(new value_type(value));
 			success = true;
 		}
 		iterator iter;
@@ -874,7 +873,6 @@ public:
 	void erase(iterator pos) {
 		if(pos.container != this || pos.cur == last) throw invalid_iterator();
 		node *n = pos.cur;
-		//++pos;  // point to the next iterator
 		_erase(n);
 	}
 	/**
