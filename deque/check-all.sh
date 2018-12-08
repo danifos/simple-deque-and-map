@@ -1,9 +1,9 @@
 #!/bin/bash
 
-test_names=("one" "two" "three" "four" "five" "six" "seven")
-file_names=("map.hpp" "exceptions.hpp" "utility.hpp" "data/class-bint.hpp" "data/class-integer.hpp" "data/class-matrix.hpp")
+test_names=("one" "two" "three" "four" "five" "six")
+file_names=("deque.hpp" "exceptions.hpp" "utility.hpp" "data/class-bint.hpp" "data/class-integer.hpp" "data/class-matrix.hpp")
 data_dir="data"
-num_failure=7
+num_failure=6
 
 for test in ${test_names[@]}
 do
